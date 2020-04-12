@@ -1,0 +1,50 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types = 1);
+
+$paths = [
+    __DIR__.'/vendor/autoload.php',
+    __DIR__ . '/../../../vendor/autoload.php',
+];
+
+foreach ($paths as $file) {
+    if (file_exists($file)) {
+        require $file;
+        break;
+    }
+}
+
+use function Innmind\Kalmiya\bootstrap;
+use Innmind\CLI\{
+    Main,
+    Environment,
+    Commands,
+};
+use Innmind\OperatingSystem\OperatingSystem;
+use Innmind\Url\Path;
+use function Innmind\HttpTransport\bootstrap as http;
+use Innmind\TimeWarp\Halt\Usleep;
+
+new class extends Main {
+    protected function main(Environment $env, OperatingSystem $os): void
+    {
+        // it means the bin is executed locally meaning the dev environment
+        if ($env->arguments()->first() === './kalmiya') {
+            $config = __DIR__.'/config/';
+        } else {
+            $config = $env->variables()->get('HOME').'/.kalmiya/';
+        }
+
+        $run = new Commands(...bootstrap(
+            $os->filesystem()->mount(Path::of($config)),
+            http()['exponential_backoff'](
+                $os->remote()->http(),
+                new Usleep,
+                $os->clock(),
+            ),
+            $os->clock(),
+            $os->sockets(),
+        ));
+        $run($env);
+    }
+};
