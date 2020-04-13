@@ -99,9 +99,20 @@ final class Releases implements Command
                 }
 
                 $album = first($library->albums($artist->id()));
+                $artistName = $artist->name()->toString();
+                $albumName = $album->name()->toString();
                 // add an album name to the search to narrow the list of returned
                 // artists to make sure we get the right one
-                $search = $catalog->search("{$artist->name()->toString()} {$album->name()->toString()}");
+                $term = "$artistName $albumName";
+
+                if (\strtolower($artistName) === \strtolower($albumName)) {
+                    // this case happens for America or HAERTS for example, and
+                    // if the same term is in the research twice it will not find
+                    // the album, and the results will contain WAY too many albums
+                    $term = $artistName;
+                }
+
+                $search = $catalog->search($term);
 
                 /** @var Set<Artist\Id> */
                 $ids = $search
