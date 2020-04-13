@@ -15,6 +15,7 @@ foreach ($paths as $file) {
 }
 
 use function Innmind\Kalmiya\bootstrap;
+use Innmind\Kalmiya\HttpTransport\RetryOnNotFound;
 use Innmind\CLI\{
     Main,
     Environment,
@@ -37,10 +38,13 @@ new class extends Main {
 
         $run = new Commands(...bootstrap(
             $os->filesystem()->mount(Path::of($config)),
-            http()['exponential_backoff'](
-                $os->remote()->http(),
-                new Usleep,
-                $os->clock(),
+            new RetryOnNotFound(
+                http()['exponential_backoff'](
+                    $os->remote()->http(),
+                    new Usleep,
+                    $os->clock(),
+                ),
+                $os->process(),
             ),
             $os->clock(),
             $os->sockets(),
