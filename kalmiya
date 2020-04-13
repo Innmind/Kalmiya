@@ -22,13 +22,19 @@ use Innmind\CLI\{
     Commands,
 };
 use Innmind\OperatingSystem\OperatingSystem;
-use Innmind\Url\Path;
+use Innmind\Url\{
+    Url,
+    Path,
+};
 use function Innmind\HttpTransport\bootstrap as http;
 use Innmind\TimeWarp\Halt\Usleep;
+use function Innmind\SilentCartographer\bootstrap as cartographer;
 
 new class extends Main {
     protected function main(Environment $env, OperatingSystem $os): void
     {
+        $os = cartographer($os)['cli'](Url::of(__DIR__));
+
         // it means the bin is executed locally meaning the dev environment
         if ($env->arguments()->first() === './kalmiya') {
             $config = __DIR__.'/config/';
