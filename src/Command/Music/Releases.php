@@ -93,11 +93,6 @@ final class Releases implements Command
         $library
             ->artists()
             ->foreach(function($artist) use ($library, $catalog, $lastCheck, $env): void {
-                if ($artist->name()->toString() === 'America') {
-                    // too generic, it will search through too many albums
-                    return;
-                }
-
                 $album = first($library->albums($artist->id()));
                 $artistName = $artist->name()->toString();
                 $albumName = $album->name()->toString();
