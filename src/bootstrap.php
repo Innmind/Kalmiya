@@ -46,10 +46,11 @@ function bootstrap(
                 ->get(new Name('certificate'))
                 ->content(),
         ),
-        new Hour(1),
+        new Hour(24),
     );
 
     return [
         new Command\Music\Library($sdk, $config),
+        new Command\Music\Releases($sdk, $config, $clock, $http),
     ];
 }
