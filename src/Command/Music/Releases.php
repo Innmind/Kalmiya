@@ -106,6 +106,7 @@ final class Releases implements Command
                 /** @var Set<Artist\Id> */
                 $ids = $search
                     ->albums()
+                    ->take(25)
                     ->mapTo(
                         Album::class,
                         static fn(Album\Id $id): Album => $catalog->album($id),
