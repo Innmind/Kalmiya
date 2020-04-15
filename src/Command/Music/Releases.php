@@ -93,7 +93,12 @@ final class Releases implements Command
         $library
             ->artists()
             ->foreach(function($artist) use ($library, $catalog, $lastCheck, $env): void {
-                $album = first($library->albums($artist->id()));
+                try {
+                    $album = first($library->albums($artist->id()));
+                } catch (ClientError $e) {
+                    return;
+                }
+
                 $artistName = $artist->name()->toString();
                 $albumName = $album->name()->toString();
                 // add an album name to the search to narrow the list of returned
@@ -113,9 +118,15 @@ final class Releases implements Command
                 $ids = $search
                     ->albums()
                     ->take(25)
-                    ->mapTo(
+                    ->toSequenceOf(
                         Album::class,
-                        static fn(Album\Id $id): Album => $catalog->album($id),
+                        static function(Album\Id $id) use ($catalog): \Generator {
+                            try {
+                                yield $catalog->album($id);
+                            } catch (ClientError $e) {
+                                return;
+                            }
+                        },
                     )
                     ->filter(static fn(Album $catalog): bool => $catalog->name()->toString() === $album->name()->toString())
                     ->reduce(
@@ -123,15 +134,15 @@ final class Releases implements Command
                         static fn(Set $ids, Album $album): Set => $ids->merge($album->artists()),
                     );
                 /** @var Set<Artist> */
-                $artists = $ids->reduce(
-                    Set::of(Artist::class),
-                    static function(Set $artists, Artist\Id $id) use ($catalog): Set {
+                $artists = $ids->toSetOf(
+                    Artist::class,
+                    static function(Artist\Id $id) use ($catalog): \Generator {
                         try {
-                            return ($artists)($catalog->artist($id));
+                            yield $catalog->artist($id);
                         } catch (ClientError $e) {
                             // the catalog doesn't seem consistent as ids
                             // provided by the api end up in 404
-                            return $artists;
+                            return;
                         }
                     },
                 );
@@ -146,9 +157,15 @@ final class Releases implements Command
                 $catalog
                     ->artist(first($artists)->id())
                     ->albums()
-                    ->mapTo(
+                    ->toSetOf(
                         Album::class,
-                        static fn(Album\Id $id): Album => $catalog->album($id),
+                        static function(Album\Id $id) use ($catalog): \Generator {
+                            try {
+                                yield $catalog->album($id);
+                            } catch (ClientError $e) {
+                                return;
+                            }
+                        },
                     )
                     ->filter(static fn(Album $album): bool => $album->release()->aheadOf($lastCheck))
                     ->foreach(function(Album $album) use ($artist, $env): void {
