@@ -18,7 +18,8 @@
         "php": "~7.4",
         "innmind/cli": "~2.0",
         "music-companion/apple-music": "~2.0",
-        "innmind/silent-cartographer": "^2.0"
+        "innmind/silent-cartographer": "^2.0",
+        "innmind/cli-framework": "^1.0"
     },
     "autoload": {
         "psr-4": {
