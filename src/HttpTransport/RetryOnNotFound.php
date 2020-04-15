@@ -3,10 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\HttpTransport;
 
-use Innmind\HttpTransport\{
-    Transport,
-    Exception\ClientError,
-};
+use Innmind\HttpTransport\Transport;
 use Innmind\Http\Message\{
     Request,
     Response,
@@ -29,16 +26,14 @@ final class RetryOnNotFound implements Transport
     {
         $i = 0;
         do {
-            try {
-                return ($this->fulfill)($request);
-            } catch (ClientError $e) {
-                if ($e->response()->statusCode()->value() !== 404) {
-                    throw $e;
-                }
+            $response = ($this->fulfill)($request);
 
-                $this->process->halt(new Second(1));
-                ++$i;
+            if ($response->statusCode()->value() !== 404) {
+                return $response;
             }
+
+            $this->process->halt(new Second(1));
+            ++$i;
         } while ($i < 5);
 
         throw $e;
