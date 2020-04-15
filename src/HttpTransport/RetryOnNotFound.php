@@ -36,6 +36,6 @@ final class RetryOnNotFound implements Transport
             ++$i;
         } while ($i < 5);
 
-        throw $e;
+        return $response;
     }
 }
