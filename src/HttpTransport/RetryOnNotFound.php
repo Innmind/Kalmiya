@@ -32,7 +32,7 @@ final class RetryOnNotFound implements Transport
                 return $response;
             }
 
-            $this->process->halt(new Second(1));
+            $this->process->halt(new Second(10));
             ++$i;
         } while ($i < 5);
 
