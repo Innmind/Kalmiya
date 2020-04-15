@@ -199,7 +199,7 @@ final class Releases implements Command
 
         try {
             $artwork = ($this->fulfill)(new Request(
-                $album->artwork()->ofSize(new Width(500), new Height(500)),
+                $album->artwork()->ofSize(new Width(300), new Height(300)),
                 Method::get(),
                 new ProtocolVersion(1, 1),
             ))->body();
@@ -218,7 +218,7 @@ final class Releases implements Command
         $output->write(Str::of("\033]")); // OSC
         $output->write(Str::of("1337;File="));
         $output->write(Str::of("size={$artwork->size()->toInt()}"));
-        $output->write(Str::of(";inline=1:"));
+        $output->write(Str::of(";width=300px;inline=1:"));
         $output->write(Str::of(\base64_encode($artwork->toString())));
         $output->write(Str::of(\chr(7))); // bell character
         $output->write(Str::of("\n"));
