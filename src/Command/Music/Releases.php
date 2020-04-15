@@ -197,11 +197,17 @@ final class Releases implements Command
             return;
         }
 
-        $artwork = ($this->fulfill)(new Request(
-            $album->artwork()->ofSize(new Width(500), new Height(500)),
-            Method::get(),
-            new ProtocolVersion(1, 1),
-        ))->body();
+        try {
+            $artwork = ($this->fulfill)(new Request(
+                $album->artwork()->ofSize(new Width(500), new Height(500)),
+                Method::get(),
+                new ProtocolVersion(1, 1),
+            ))->body();
+        } catch (\Exception $e) {
+            // sometimes it fails with the message "Received HTTP/0.9 when not allowed"
+            // discard such error for the moment
+            return;
+        }
 
         if (!$artwork->knowsSize()) {
             return;
