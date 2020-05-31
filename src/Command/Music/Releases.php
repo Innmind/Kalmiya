@@ -190,7 +190,7 @@ final class Releases implements Command
     public function toString(): string
     {
         return <<<USAGE
-            music:releases
+            music:releases --text-only
 
             Will list all the releases for artists in your library
             USAGE;
@@ -198,6 +198,10 @@ final class Releases implements Command
 
     private function printArtwork(Environment $env, Album $album): void
     {
+        if ($env->arguments()->contains('--text-only')) {
+            return;
+        }
+
         if (!$album->hasArtwork()) {
             return;
         }
