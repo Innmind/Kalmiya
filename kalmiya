@@ -16,36 +16,28 @@ foreach ($paths as $file) {
 
 use function Innmind\Kalmiya\bootstrap;
 use Innmind\Kalmiya\HttpTransport\RetryOnNotFound;
-use Innmind\CLI\{
+use Innmind\CLI\Framework\{
+    Application,
     Main,
-    Environment,
 };
-use Innmind\CLI\Framework\Application;
-use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\Url\Path;
-use function Innmind\HttpTransport\bootstrap as http;
-use Innmind\TimeWarp\Halt\Usleep;
 
 new class extends Main {
-    protected function main(Environment $env, OperatingSystem $os): void
+    protected function configure(Application $app): Application
     {
-        Application::of($env, $os)
+        return $app
             ->configAt(Path::of(__DIR__.'/config/'))
+            ->useResilientOperatingSystem()
             ->commands(static fn($env, $os): array => bootstrap(
                 $os->filesystem()->mount(Path::of(
                     $env->variables()->get('HOME').'/.kalmiya/',
                 )),
                 new RetryOnNotFound(
-                    http()['exponential_backoff'](
-                        $os->remote()->http(),
-                        new Usleep,
-                        $os->clock(),
-                    ),
+                    $os->remote()->http(),
                     $os->process(),
                 ),
                 $os->clock(),
                 $os->sockets(),
-            ))
-            ->run();
+            ));
     }
 };
