@@ -92,7 +92,7 @@ final class Releases implements Command
         $catalog = $this->sdk->catalog($library->storefront()->id());
         $library
             ->artists()
-            ->foreach(function($artist) use ($library, $catalog, $lastCheck, $env): void {
+            ->foreach(function($artist) use ($library, $catalog, $lastCheck, $now, $env): void {
                 try {
                     $album = first($library->albums($artist->id()));
                 } catch (ClientError $e) {
@@ -168,6 +168,7 @@ final class Releases implements Command
                         },
                     )
                     ->filter(static fn(Album $album): bool => $album->release()->aheadOf($lastCheck))
+                    ->filter(static fn(Album $album): bool => $now->aheadOf($album->release())) // do not display future releases
                     ->foreach(function(Album $album) use ($artist, $env): void {
                         $env->output()->write(Str::of(
                             "{$artist->name()->toString()} ||| {$album->name()->toString()}\n"
