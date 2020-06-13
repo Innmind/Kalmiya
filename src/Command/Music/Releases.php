@@ -3,18 +3,18 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command\Music;
 
+use Innmind\Kalmiya\AppleMusic\SDKFactory;
 use Innmind\CLI\{
     Command,
     Command\Arguments,
     Command\Options,
     Environment,
 };
-use MusicCompanion\AppleMusic\{
-    SDK,
-    SDK\Catalog\Album,
-    SDK\Catalog\Artwork\Width,
-    SDK\Catalog\Artwork\Height,
-    SDK\Catalog\Artist,
+use MusicCompanion\AppleMusic\SDK\Catalog\{
+    Album,
+    Artwork\Width,
+    Artwork\Height,
+    Artist,
 };
 use Innmind\Filesystem\{
     Adapter,
@@ -40,14 +40,14 @@ use function Innmind\Immutable\first;
 
 final class Releases implements Command
 {
-    private SDK $sdk;
+    private SDKFactory $makeSDK;
     private Adapter $config;
     private Clock $clock;
     private Transport $fulfill;
 
-    public function __construct(SDK $sdk, Adapter $config, Clock $clock, Transport $fulfill)
+    public function __construct(SDKFactory $makeSDK, Adapter $config, Clock $clock, Transport $fulfill)
     {
-        $this->sdk = $sdk;
+        $this->makeSDK = $makeSDK;
         $this->config = $config;
         $this->clock = $clock;
         $this->fulfill = $fulfill;
@@ -99,8 +99,9 @@ final class Releases implements Command
         $now = $this->clock->now();
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
-        $library = $this->sdk->library($userToken);
-        $catalog = $this->sdk->catalog($library->storefront()->id());
+        $sdk = ($this->makeSDK)();
+        $library = $sdk->library($userToken);
+        $catalog = $sdk->catalog($library->storefront()->id());
         $library
             ->artists()
             ->foreach(static function($artist) use ($library, $catalog, $lastCheck, $now, $format): void {

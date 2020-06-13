@@ -3,6 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command\Music;
 
+use Innmind\Kalmiya\AppleMusic\SDKFactory;
 use Innmind\CLI\{
     Command,
     Command\Arguments,
@@ -19,12 +20,12 @@ use Innmind\Immutable\Str;
 
 final class Library implements Command
 {
-    private SDK $sdk;
+    private SDKFactory $makeSDK;
     private Adapter $config;
 
-    public function __construct(SDK $sdk, Adapter $config)
+    public function __construct(SDKFactory $makeSDK, Adapter $config)
     {
-        $this->sdk = $sdk;
+        $this->makeSDK = $makeSDK;
         $this->config = $config;
     }
 
@@ -60,7 +61,7 @@ final class Library implements Command
 
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
-        $library = $this->sdk->library($userToken);
+        $library = ($this->makeSDK)()->library($userToken);
         $library
             ->artists()
             ->foreach(static function($artist) use ($library, $format): void {
