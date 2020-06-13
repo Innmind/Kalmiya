@@ -11,12 +11,15 @@ use Innmind\Filesystem\{
 };
 use Innmind\HttpTransport\Transport;
 use Innmind\TimeContinuum\Clock;
+use Innmind\Url\Path;
 use Innmind\CLI;
+use Innmind\HttpFramework;
+use function Innmind\Templating\bootstrap as templating;
 
 /**
  * @return list<CLI\Command>
  */
-function bootstrap(
+function cli(
     Adapter $config,
     Transport $http,
     Clock $clock,
@@ -36,4 +39,17 @@ function bootstrap(
             $sockets,
         ),
     ];
+}
+
+function http(
+    Adapter $config,
+    Transport $http,
+    Clock $clock,
+    Path $templates
+): HttpFramework\RequestHandler {
+    return new RequestHandler\AppleMusic(
+        new AppleMusic\SDKFactory($config, $http, $clock),
+        templating($templates),
+        $config,
+    );
 }

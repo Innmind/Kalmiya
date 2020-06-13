@@ -14,7 +14,7 @@ foreach ($paths as $file) {
     }
 }
 
-use function Innmind\Kalmiya\bootstrap;
+use function Innmind\Kalmiya\cli;
 use Innmind\Kalmiya\HttpTransport\RetryOnNotFound;
 use Innmind\CLI\Framework\{
     Application,
@@ -28,7 +28,7 @@ new class extends Main {
         return $app
             ->configAt(Path::of(__DIR__.'/config/'))
             ->useResilientOperatingSystem()
-            ->commands(static fn($env, $os): array => bootstrap(
+            ->commands(static fn($env, $os): array => cli(
                 $os->filesystem()->mount(Path::of(
                     $env->variables()->get('HOME').'/.kalmiya/',
                 )),

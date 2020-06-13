@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Login to Apple Music</title>
+    </head>
+    <body>
+        <script src="https://js-cdn.music.apple.com/musickit/v1/musickit.js"></script>
+        <script>
+            document.addEventListener('musickitloaded', () => {
+                MusicKit.configure({
+                    developerToken: '{{ token }}',
+                    app: {
+                        name: 'Kalmiya',
+                    }
+                });
+                let music = MusicKit.getInstance();
+
+                music
+                    .unauthorize()
+                    .then(() => {
+                        music.authorize().then(() => {
+                            let form = new FormData();
+                            form.set('token', music.musicUserToken);
+                            fetch(
+                                location.href,
+                                {
+                                    method: 'POST',
+                                    body: form
+                                }
+                            ).then(() => alert('You can close this window now'));
+                        });
+                    });
+            });
+        </script>
+    </body>
+</html>
