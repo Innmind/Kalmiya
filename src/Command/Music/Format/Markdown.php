@@ -15,17 +15,22 @@ use Innmind\Immutable\Str;
 final class Markdown implements Format
 {
     private Environment $env;
+    private bool $headerPrinted = false;
 
     public function __construct(Environment $env)
     {
         $this->env = $env;
-        $output = $env->output();
-        $output->write(Str::of("|Artist|Album|Artwork|\n"));
-        $output->write(Str::of("|---|---|---|\n"));
     }
 
     public function __invoke($album, Artist $artist): void
     {
+        if (!$this->headerPrinted) {
+            $output = $this->env->output();
+            $output->write(Str::of("|Artist|Album|Artwork|\n"));
+            $output->write(Str::of("|---|---|---|\n"));
+            $this->headerPrinted = true;
+        }
+
         $artwork = '';
         $albumName = $album->name()->toString();
 
