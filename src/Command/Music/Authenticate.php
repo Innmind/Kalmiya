@@ -80,7 +80,7 @@ final class Authenticate implements Command
             ));
         }
 
-        if (!$appleMusic->contains(new Name('Certificate'))) {
+        if (!$appleMusic->contains(new Name('certificate'))) {
             $certificate = Str::of('');
             do {
                 $ask = new Question('Certificate:');
