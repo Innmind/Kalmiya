@@ -16,7 +16,6 @@ use Innmind\Filesystem\{
     Name,
     Directory,
 };
-use Innmind\Immutable\Str;
 
 final class Library implements Command
 {
@@ -31,22 +30,9 @@ final class Library implements Command
 
     public function __invoke(Environment $env, Arguments $arguments, Options $options): void
     {
-        if (!$this->config->contains(new Name('apple-music'))) {
-            $env->error()->write(Str::of("No config provided\n"));
-            $env->exit(1);
-
-            return;
-        }
-
+        $sdk = ($this->makeSDK)();
+        /** @var Directory */
         $config = $this->config->get(new Name('apple-music'));
-
-        if (!$config instanceof Directory || !$config->contains(new Name('user-token'))) {
-            $env->error()->write(Str::of("No config provided\n"));
-            $env->exit(1);
-
-            return;
-        }
-
         $wishedFormat = $options->contains('format') ? $options->get('format') : 'text';
 
         switch ($wishedFormat) {
@@ -61,7 +47,7 @@ final class Library implements Command
 
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
-        $library = ($this->makeSDK)()->library($userToken);
+        $library = $sdk->library($userToken);
         $library
             ->artists()
             ->foreach(static function($artist) use ($library, $format): void {

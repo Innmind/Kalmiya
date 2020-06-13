@@ -32,10 +32,7 @@ use Innmind\HttpTransport\{
     Transport,
     Exception\ClientError,
 };
-use Innmind\Immutable\{
-    Str,
-    Set,
-};
+use Innmind\Immutable\Set;
 use function Innmind\Immutable\first;
 
 final class Releases implements Command
@@ -45,8 +42,12 @@ final class Releases implements Command
     private Clock $clock;
     private Transport $fulfill;
 
-    public function __construct(SDKFactory $makeSDK, Adapter $config, Clock $clock, Transport $fulfill)
-    {
+    public function __construct(
+        SDKFactory $makeSDK,
+        Adapter $config,
+        Clock $clock,
+        Transport $fulfill
+    ) {
         $this->makeSDK = $makeSDK;
         $this->config = $config;
         $this->clock = $clock;
@@ -55,21 +56,9 @@ final class Releases implements Command
 
     public function __invoke(Environment $env, Arguments $arguments, Options $options): void
     {
-        if (!$this->config->contains(new Name('apple-music'))) {
-            $env->error()->write(Str::of("No config provided\n"));
-            $env->exit(1);
-
-            return;
-        }
-
+        $sdk = ($this->makeSDK)();
+        /** @var Directory */
         $config = $this->config->get(new Name('apple-music'));
-
-        if (!$config instanceof Directory || !$config->contains(new Name('user-token'))) {
-            $env->error()->write(Str::of("No config provided\n"));
-            $env->exit(1);
-
-            return;
-        }
 
         if (!$config->contains(new Name('releases-check'))) {
             $lastCheck = $this->clock->now()->goBack(new Year(1));
@@ -99,7 +88,6 @@ final class Releases implements Command
         $now = $this->clock->now();
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
-        $sdk = ($this->makeSDK)();
         $library = $sdk->library($userToken);
         $catalog = $sdk->catalog($library->storefront()->id());
         $library

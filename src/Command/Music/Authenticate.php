@@ -3,6 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command\Music;
 
+use Innmind\Kalmiya\Exception\AppleMusicNotConfigured;
 use Innmind\CLI\{
     Command,
     Command\Arguments,
@@ -19,19 +20,38 @@ use Innmind\Filesystem\{
 use Innmind\OperatingSystem\Sockets;
 use Innmind\Stream\Readable\Stream;
 use Innmind\Immutable\Str;
+use MusicCompanion\AppleMusic\Exception\{
+    InvalidToken,
+    InvalidUserToken,
+};
 
 final class Authenticate implements Command
 {
+    private Command $attempt;
     private Adapter $config;
     private Sockets $sockets;
 
-    public function __construct(Adapter $config, Sockets $sockets)
-    {
+    public function __construct(
+        Command $attempt,
+        Adapter $config,
+        Sockets $sockets
+    ) {
+        $this->attempt = $attempt;
         $this->config = $config;
         $this->sockets = $sockets;
     }
 
     public function __invoke(Environment $env, Arguments $arguments, Options $options): void
+    {
+        try {
+            ($this->attempt)($env, $arguments, $options);
+        } catch (AppleMusicNotConfigured | InvalidToken | InvalidUserToken $e) {
+            $this->configure($env);
+            ($this->attempt)($env, $arguments, $options);
+        }
+    }
+
+    private function configure(Environment $env): void
     {
         if ($this->config->contains(new Name('apple-music'))) {
             /** @var Directory */
@@ -90,10 +110,6 @@ final class Authenticate implements Command
 
     public function toString(): string
     {
-        return <<<USAGE
-            music:authenticate
-
-            Provide the information to communicate with Apple Music
-            USAGE;
+        return $this->attempt->toString();
     }
 }

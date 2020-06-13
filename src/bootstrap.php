@@ -22,16 +22,18 @@ function bootstrap(
     Clock $clock,
     Sockets $sockets
 ): array {
-    if (!$config->contains(new Name('apple-music'))) {
-        return [
-            new Command\Music\Authenticate($config, $sockets),
-        ];
-    }
-
     $sdkFactory = new AppleMusic\SDKFactory($config, $http, $clock);
 
     return [
-        new Command\Music\Library($sdkFactory, $config),
-        new Command\Music\Releases($sdkFactory, $config, $clock, $http),
+        new Command\Music\Authenticate(
+            new Command\Music\Library($sdkFactory, $config),
+            $config,
+            $sockets,
+        ),
+        new Command\Music\Authenticate(
+            new Command\Music\Releases($sdkFactory, $config, $clock, $http),
+            $config,
+            $sockets,
+        ),
     ];
 }
