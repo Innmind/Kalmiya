@@ -80,11 +80,11 @@ final class Releases implements Command
             );
         }
 
-        $wishedFormat = $options->contains('format') ? $options->get('format') : 'pretty';
+        $wishedFormat = $options->contains('format') ? $options->get('format') : 'text';
 
         switch ($wishedFormat) {
-            case 'text':
-                $format = new Format\Text($env);
+            case 'pretty':
+                $format = new Format\Pretty($env, $this->fulfill);
                 break;
 
             case 'markdown':
@@ -92,7 +92,7 @@ final class Releases implements Command
                 break;
 
             default:
-                $format = new Format\Pretty($env, $this->fulfill);
+                $format = new Format\Text($env);
                 break;
         }
 
