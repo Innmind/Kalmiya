@@ -46,18 +46,17 @@ final class Library implements Command
             return;
         }
 
+        $format = new Format\Text($env);
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
         $library = $this->sdk->library($userToken);
         $library
             ->artists()
-            ->foreach(static function($artist) use ($library, $env): void {
+            ->foreach(static function($artist) use ($library, $format): void {
                 $library
                     ->albums($artist->id())
-                    ->foreach(static function($album) use ($env, $artist) {
-                        $env
-                            ->output()
-                            ->write(Str::of("{$artist->name()->toString()} ||| {$album->name()->toString()}\n"));
+                    ->foreach(static function($album) use ($format, $artist) {
+                        $format($album, $artist);
                     });
             });
     }
