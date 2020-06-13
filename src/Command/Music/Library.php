@@ -46,7 +46,18 @@ final class Library implements Command
             return;
         }
 
-        $format = new Format\Text($env);
+        $wishedFormat = $options->contains('format') ? $options->get('format') : 'text';
+
+        switch ($wishedFormat) {
+            case 'markdown':
+                $format = new Format\Markdown($env);
+                break;
+
+            default:
+                $format = new Format\Text($env);
+                break;
+        }
+
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
         $library = $this->sdk->library($userToken);
@@ -64,9 +75,11 @@ final class Library implements Command
     public function toString(): string
     {
         return <<<USAGE
-            music:library
+            music:library --format=
 
             Will list all the music in your Apple Music library
+
+            The format can either be 'text' or 'markdown'
             USAGE;
     }
 }
