@@ -18,7 +18,17 @@ use Innmind\Filesystem\{
     File\File,
 };
 use Innmind\OperatingSystem\Sockets;
+use Innmind\IPC\{
+    Server,
+    Exception\Stop,
+};
+use Innmind\Server\Control\Server\{
+    Processes,
+    Command as ServerCommand,
+    Signal,
+};
 use Innmind\Stream\Readable\Stream;
+use Innmind\Url\Path;
 use Innmind\Immutable\Str;
 use MusicCompanion\AppleMusic\Exception\{
     InvalidToken,
@@ -30,15 +40,24 @@ final class Authenticate implements Command
     private Command $attempt;
     private Adapter $config;
     private Sockets $sockets;
+    private Processes $processes;
+    private Server $listen;
+    private Path $httpServer;
 
     public function __construct(
         Command $attempt,
         Adapter $config,
-        Sockets $sockets
+        Sockets $sockets,
+        Processes $processes,
+        Server $listen,
+        Path $httpServer
     ) {
         $this->attempt = $attempt;
         $this->config = $config;
         $this->sockets = $sockets;
+        $this->processes = $processes;
+        $this->listen = $listen;
+        $this->httpServer = $httpServer;
     }
 
     public function __invoke(Environment $env, Arguments $arguments, Options $options): void
@@ -96,16 +115,27 @@ final class Authenticate implements Command
             ));
         }
 
-        // always ask for the user token as this token can expire
-        $ask = new Question('User token:');
-        $userToken = $ask($env, $this->sockets);
-
-        $appleMusic = $appleMusic->add(File::named(
-            'user-token',
-            Stream::ofContent($userToken->toString()),
-        ));
-
         $this->config->add($appleMusic);
+
+        $http = $this->processes->execute(
+            ServerCommand::foreground('php')
+                ->withShortOption('S', 'localhost:8080')
+                ->withWorkingDirectory($this->httpServer),
+        );
+        $this
+            ->processes
+            ->execute(
+                ServerCommand::foreground('open')
+                    ->withArgument('http://localhost:8080')
+            )
+            ->wait();
+
+        ($this->listen)(static function(): void {
+            // the only message that we can receive is when the user token has
+            // been persisted
+            throw new Stop;
+        });
+        $this->processes->kill($http->pid(), Signal::terminate());
     }
 
     public function toString(): string

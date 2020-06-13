@@ -15,6 +15,11 @@ use Innmind\Filesystem\{
     Name as FileName,
     Directory,
 };
+use Innmind\IPC\{
+    IPC,
+    Process,
+    Message\Generic as Message,
+};
 use Innmind\Http\Message\{
     ServerRequest,
     Response,
@@ -28,15 +33,21 @@ final class AppleMusic implements RequestHandler
     private SDKFactory $makeSDK;
     private Engine $render;
     private Adapter $config;
+    private IPC $ipc;
+    private Process\Name $cli;
 
     public function __construct(
         SDKFactory $makeSDK,
         Engine $render,
-        Adapter $config
+        Adapter $config,
+        IPC $ipc,
+        Process\Name $cli
     ) {
         $this->makeSDK = $makeSDK;
         $this->render = $render;
         $this->config = $config;
+        $this->ipc = $ipc;
+        $this->cli = $cli;
     }
 
     public function __invoke(ServerRequest $request): Response
@@ -75,6 +86,10 @@ final class AppleMusic implements RequestHandler
             'user-token',
             Stream::ofContent($request->form()->get('token')->value()),
         )));
+        $this
+            ->ipc
+            ->get($this->cli)
+            ->send(Message::of('text/plain', 'ok'));
 
         return new Response\Response(
             $code = StatusCode::of('OK'),

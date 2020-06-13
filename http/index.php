@@ -9,6 +9,7 @@ use Innmind\HttpFramework\{
     Application,
 };
 use Innmind\Url\Path;
+use function Innmind\IPC\bootstrap as ipc;
 
 new class extends Main {
     protected function configure(Application $app): Application
@@ -22,6 +23,7 @@ new class extends Main {
                 $os->remote()->http(),
                 $os->clock(),
                 Path::of(__DIR__.'/../templates/'),
+                ipc($os),
             ));
     }
 };

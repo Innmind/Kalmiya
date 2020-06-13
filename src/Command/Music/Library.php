@@ -3,7 +3,10 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command\Music;
 
-use Innmind\Kalmiya\AppleMusic\SDKFactory;
+use Innmind\Kalmiya\{
+    AppleMusic\SDKFactory,
+    Exception\AppleMusicNotConfigured,
+};
 use Innmind\CLI\{
     Command,
     Command\Arguments,
@@ -43,6 +46,10 @@ final class Library implements Command
             default:
                 $format = new Format\Text($env);
                 break;
+        }
+
+        if (!$config->contains(new Name('user-token'))) {
+            throw new AppleMusicNotConfigured;
         }
 
         $userToken = $config->get(new Name('user-token'))->content()->toString();
