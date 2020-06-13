@@ -32,11 +32,6 @@ use Innmind\HttpTransport\{
     Transport,
     Exception\ClientError,
 };
-use Innmind\Http\{
-    Message\Request\Request,
-    Message\Method,
-    ProtocolVersion,
-};
 use Innmind\Immutable\{
     Str,
     Set,
@@ -85,6 +80,22 @@ final class Releases implements Command
             );
         }
 
+        $wishedFormat = $options->contains('format') ? $options->get('format') : 'pretty';
+
+        switch ($wishedFormat) {
+            case 'text':
+                $format = new Format\Text($env);
+                break;
+
+            case 'markdown':
+                $format = new Format\Markdown($env);
+                break;
+
+            default:
+                $format = new Format\Pretty($env, $this->fulfill);
+                break;
+        }
+
         $now = $this->clock->now();
         $userToken = $config->get(new Name('user-token'))->content()->toString();
 
@@ -92,7 +103,7 @@ final class Releases implements Command
         $catalog = $this->sdk->catalog($library->storefront()->id());
         $library
             ->artists()
-            ->foreach(function($artist) use ($library, $catalog, $lastCheck, $now, $env): void {
+            ->foreach(static function($artist) use ($library, $catalog, $lastCheck, $now, $format): void {
                 try {
                     $album = first($library->albums($artist->id()));
                 } catch (ClientError $e) {
@@ -169,14 +180,8 @@ final class Releases implements Command
                     )
                     ->filter(static fn(Album $album): bool => $album->release()->aheadOf($lastCheck))
                     ->filter(static fn(Album $album): bool => $now->aheadOf($album->release())) // do not display future releases
-                    ->foreach(function(Album $album) use ($artist, $env): void {
-                        $env->output()->write(Str::of(
-                            "{$artist->name()->toString()} ||| {$album->name()->toString()}\n"
-                        ));
-                        $this->printArtwork($env, $album);
-                        $env->output()->write(Str::of(
-                            "{$album->url()->toString()}\n\n"
-                        ));
+                    ->foreach(static function(Album $album) use ($artist, $format): void {
+                        $format($album, $artist);
                     });
             });
 
@@ -191,58 +196,11 @@ final class Releases implements Command
     public function toString(): string
     {
         return <<<USAGE
-            music:releases --text-only
+            music:releases --format=
 
             Will list all the releases for artists in your library
+
+            The format can be either 'text', 'markdown' or 'pretty'
             USAGE;
-    }
-
-    private function printArtwork(Environment $env, Album $album): void
-    {
-        if ($env->arguments()->contains('--text-only')) {
-            return;
-        }
-
-        if (!$album->hasArtwork()) {
-            return;
-        }
-
-        if (!$env->interactive()) {
-            return;
-        }
-
-        if (!$env->variables()->contains('LC_TERMINAL')) {
-            return;
-        }
-
-        if ($env->variables()->get('LC_TERMINAL') !== 'iTerm2') {
-            return;
-        }
-
-        try {
-            $artwork = ($this->fulfill)(new Request(
-                $album->artwork()->ofSize(new Width(300), new Height(300)),
-                Method::get(),
-                new ProtocolVersion(1, 1),
-            ))->body();
-        } catch (\Exception $e) {
-            // sometimes it fails with the message "Received HTTP/0.9 when not allowed"
-            // discard such error for the moment
-            return;
-        }
-
-        if (!$artwork->knowsSize()) {
-            return;
-        }
-
-        $output = $env->output();
-        // @see https://www.iterm2.com/documentation-images.html
-        $output->write(Str::of("\033]")); // OSC
-        $output->write(Str::of("1337;File="));
-        $output->write(Str::of("size={$artwork->size()->toInt()}"));
-        $output->write(Str::of(";width=300px;inline=1:"));
-        $output->write(Str::of(\base64_encode($artwork->toString())));
-        $output->write(Str::of(\chr(7))); // bell character
-        $output->write(Str::of("\n"));
     }
 }

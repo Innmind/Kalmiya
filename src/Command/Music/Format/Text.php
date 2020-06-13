@@ -6,9 +6,9 @@ namespace Innmind\Kalmiya\Command\Music\Format;
 use Innmind\Kalmiya\Command\Music\Format;
 use Innmind\CLI\Environment;
 use MusicCompanion\AppleMusic\SDK\{
-    Library\Album as LibraryAlbum,
+    Library,
     Library\Artist,
-    Catalog\Album as CatalogAlbum,
+    Catalog,
 };
 use Innmind\Immutable\Str;
 
@@ -26,6 +26,14 @@ final class Text implements Format
         $this
             ->env
             ->output()
-            ->write(Str::of("{$artist->name()->toString()} ||| {$album->name()->toString()}\n"));
+            ->write(Str::of("{$artist->name()->toString()} ||| {$album->name()->toString()}"));
+
+        if ($album instanceof Catalog\Album) {
+            $this->env->output()->write(Str::of(
+                " ||| {$album->url()->toString()}",
+            ));
+        }
+
+        $this->env->output()->write(Str::of("\n"));
     }
 }
