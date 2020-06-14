@@ -86,10 +86,14 @@ final class AppleMusic implements RequestHandler
             'user-token',
             Stream::ofContent($request->form()->get('token')->value()),
         )));
-        $this
-            ->ipc
-            ->get($this->cli)
-            ->send(Message::of('text/plain', 'ok'));
+
+        if ($this->ipc->exist($this->cli)) {
+            // as during development we may only start the http server
+            $this
+                ->ipc
+                ->get($this->cli)
+                ->send(Message::of('text/plain', 'ok'));
+        }
 
         return new Response\Response(
             $code = StatusCode::of('OK'),
