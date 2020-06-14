@@ -7,6 +7,8 @@
         <script src="https://js-cdn.music.apple.com/musickit/v1/musickit.js"></script>
         <script>
             document.addEventListener('musickitloaded', () => {
+                localStorage.clear();
+
                 MusicKit.configure({
                     developerToken: '{{ token }}',
                     app: {
@@ -15,21 +17,17 @@
                 });
                 let music = MusicKit.getInstance();
 
-                music
-                    .unauthorize()
-                    .then(() => {
-                        music.authorize().then(() => {
-                            let form = new FormData();
-                            form.set('token', music.musicUserToken);
-                            fetch(
-                                location.href,
-                                {
-                                    method: 'POST',
-                                    body: form
-                                }
-                            ).then(() => alert('You can close this window now'));
-                        });
-                    });
+                music.authorize().then(() => {
+                    let form = new FormData();
+                    form.set('token', music.musicUserToken);
+                    fetch(
+                        location.href,
+                        {
+                            method: 'POST',
+                            body: form
+                        }
+                    ).then(() => alert('You can close this window now'));
+                });
             });
         </script>
     </body>
