@@ -8,7 +8,7 @@ $paths = [
 ];
 
 foreach ($paths as $file) {
-    if (file_exists($file)) {
+    if (\file_exists($file)) {
         require $file;
         break;
     }
