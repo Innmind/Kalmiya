@@ -3,7 +3,10 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya;
 
-use Innmind\OperatingSystem\Sockets;
+use Innmind\OperatingSystem\{
+    Filesystem,
+    Sockets,
+};
 use Innmind\Filesystem\{
     Adapter,
     Name,
@@ -17,6 +20,10 @@ use Innmind\IPC\{
     Process,
 };
 use Innmind\Url\Path;
+use Innmind\Immutable\{
+    Set,
+    Map,
+};
 use Innmind\CLI;
 use Innmind\HttpFramework;
 use function Innmind\Templating\bootstrap as templating;
@@ -25,16 +32,35 @@ use function Innmind\Templating\bootstrap as templating;
  * @return list<CLI\Command>
  */
 function cli(
+    Filesystem $filesystem,
     Adapter $config,
     Transport $http,
     Clock $clock,
     Sockets $sockets,
     Server $server,
     IPC $ipc,
-    Path $httpServer
+    Path $httpServer,
+    Path $home,
+    Path $backup
 ): array {
     $sdkFactory = new AppleMusic\SDKFactory($config, $http, $clock);
     $ipcServer = $ipc->listen(new Process\Name('apple-music'));
+    /** @var Set<Path> */
+    $backups = Set::of(
+        Path::class,
+        Path::of('Desktop/'),
+        Path::of('Documents/'),
+        Path::of('Downloads/'),
+        Path::of('Movies/'),
+    );
+    /** @var Map<Path, Path> */
+    $backups = $backups->toMapOf(
+        Path::class,
+        Path::class,
+        static function(Path $folder) use ($home, $backup): \Generator {
+            yield $home->resolve($folder) => $backup->resolve($folder);
+        },
+    );
 
     return [
         new Command\Music\Authenticate(
@@ -52,6 +78,10 @@ function cli(
             $server->processes(),
             $ipcServer,
             $httpServer,
+        ),
+        new Command\Backup(
+            $filesystem,
+            $backups,
         ),
     ];
 }

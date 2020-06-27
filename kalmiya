@@ -30,6 +30,7 @@ new class extends Main {
             ->configAt(Path::of(__DIR__.'/config/'))
             ->useResilientOperatingSystem()
             ->commands(static fn($env, $os): array => cli(
+                $os->filesystem(),
                 $os->filesystem()->mount(Path::of(
                     $env->variables()->get('HOME').'/.kalmiya/',
                 )),
@@ -42,6 +43,8 @@ new class extends Main {
                 $os->control(),
                 ipc($os),
                 Path::of(__DIR__.'/http/'),
+                Path::of($env->variables()->get('HOME').'/'),
+                Path::of('/Volumes/Backup/'.$env->variables()->get('USER').'/'),
             ));
     }
 };
