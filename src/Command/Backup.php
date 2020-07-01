@@ -11,28 +11,44 @@ use Innmind\CLI\{
 };
 use Innmind\OperatingSystem\Filesystem;
 use Innmind\Filesystem\File;
+use Innmind\Server\Control\Server;
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Map,
+    Set,
     Str,
 };
-use function Innmind\Immutable\assertMap;
+use function Innmind\Immutable\{
+    assertMap,
+    assertSet,
+};
 
 final class Backup implements Command
 {
     private Filesystem $filesystem;
+    private Server\Processes $processes;
     /** @var Map<Path, Path> */
     private Map $backups;
+    /** @var Set<Path> */
+    private Set $foldersToOpen;
 
     /**
      * @param Map<Path, Path> $backups
+     * @param Set<Path> $foldersToOpen
      */
-    public function __construct(Filesystem $filesystem, Map $backups)
-    {
+    public function __construct(
+        Filesystem $filesystem,
+        Server\Processes $processes,
+        Map $backups,
+        Set $foldersToOpen
+    ) {
         assertMap(Path::class, Path::class, $backups, 2);
+        assertSet(Path::class, $foldersToOpen, 3);
 
         $this->filesystem = $filesystem;
+        $this->processes = $processes;
         $this->backups = $backups;
+        $this->foldersToOpen = $foldersToOpen;
     }
 
     public function __invoke(Environment $env, Arguments $arguments, Options $options): void
@@ -61,6 +77,15 @@ final class Backup implements Command
                     $target->add($file);
                     $env->output()->write(Str::of(" OK\n"));
                 });
+        });
+        $this->foldersToOpen->foreach(function(Path $folder): void {
+            $this
+                ->processes
+                ->execute(
+                    Server\Command::foreground('open')
+                        ->withArgument($folder->toString()),
+                )
+                ->wait();
         });
     }
 

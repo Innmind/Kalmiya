@@ -61,6 +61,14 @@ function cli(
             yield $home->resolve($folder) => $backup->resolve($folder);
         },
     );
+    // it is not possible to automatically copy the iCloud folder as the files
+    // are present on the filesystem but they are not downloaded so we would only
+    // copy empty shells
+    $foldersToOpen = Set::of(
+        Path::class,
+        $home->resolve(Path::of('Library/Mobile Documents/')),
+        $backup,
+    );
 
     return [
         new Command\Music\Authenticate(
@@ -81,7 +89,9 @@ function cli(
         ),
         new Command\Backup(
             $filesystem,
+            $server->processes(),
             $backups,
+            $foldersToOpen,
         ),
     ];
 }
