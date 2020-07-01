@@ -30,7 +30,7 @@ final class Text implements Format
 
         if ($album instanceof Catalog\Album) {
             $this->env->output()->write(Str::of(
-                " ||| {$album->url()->toString()}",
+                " ||| {$album->url()->toString()}?ls=1",
             ));
         }
 

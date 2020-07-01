@@ -53,7 +53,7 @@ final class Markdown implements Format
 
         if ($album instanceof Catalog\Album) {
             $url = $album->url()->toString();
-            $albumName = "[$albumName]($url)";
+            $albumName = "[$albumName]($url?ls=1)";
         }
 
         $this

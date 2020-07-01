@@ -41,7 +41,7 @@ final class Pretty implements Format
         }
 
         $this->env->output()->write(Str::of(
-            "{$album->url()->toString()}\n\n"
+            "{$album->url()->toString()}?ls=1\n\n"
         ));
     }
 
