@@ -93,6 +93,10 @@ function cli(
             $backups,
             $foldersToOpen,
         ),
+        new Command\Restore(
+            $filesystem,
+            $backups,
+        ),
     ];
 }
 
