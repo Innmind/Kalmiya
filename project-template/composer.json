@@ -1,0 +1,35 @@
+{
+    "name": "{vendor}/{package}",
+    "type": "library",
+    "description": "",
+    "keywords": [],
+    "homepage": "http://github.com/{vendor}/{package}",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Baptiste Langlade",
+            "email": "langlade.baptiste@gmail.com"
+        }
+    ],
+    "support": {
+        "issues": "http://github.com/{vendor}/{package}/issues"
+    },
+    "require": {
+        "php": "~7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "{vendor}\\{package}\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\{vendor}\\{package}\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "~9.0",
+        "vimeo/psalm": "^3.7",
+        "innmind/black-box": "~4.10"
+    }
+}

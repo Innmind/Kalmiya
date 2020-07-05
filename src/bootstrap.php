@@ -18,6 +18,10 @@ use Innmind\Immutable\{
 };
 use Innmind\CLI;
 use Innmind\HttpFramework;
+use Innmind\DependencyGraph\{
+    Render,
+    Loader,
+};
 use function Innmind\Templating\bootstrap as templating;
 
 /**
@@ -29,7 +33,8 @@ function cli(
     IPC $ipc,
     Path $httpServer,
     Path $home,
-    Path $backup
+    Path $backup,
+    Path $codeBackup
 ): array {
     $http = new HttpTransport\RetryOnNotFound(
         $os->remote()->http(),
@@ -66,6 +71,9 @@ function cli(
         $backup,
     );
 
+    $package = new Loader\Package($http);
+    $vendor = new Loader\Vendor($http, $package);
+
     return [
         new Command\Music\Authenticate(
             new Command\Music\Library($sdkFactory, $config),
@@ -96,6 +104,17 @@ function cli(
         new Command\Setup(
             Command\Setup::genome(),
             $os,
+        ),
+        new Command\Graph(
+            new Loader\VendorDependencies($vendor, $package),
+            new Render,
+            $os->control(),
+            $os->status()->tmp(),
+        ),
+        new Command\NewProject(
+            $os,
+            $home->resolve(Path::of('Sites/')),
+            $codeBackup,
         ),
     ];
 }
