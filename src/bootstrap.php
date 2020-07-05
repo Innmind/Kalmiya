@@ -45,6 +45,8 @@ function cli(
         Path::of('Documents/'),
         Path::of('Downloads/'),
         Path::of('Movies/'),
+        Path::of('.series/'),
+        Path::of('.kalmiya/'),
     );
     /** @var Map<Path, Path> */
     $backups = $backups->toMapOf(

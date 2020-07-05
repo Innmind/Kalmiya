@@ -121,6 +121,8 @@ final class Setup implements Command
             Gene\ComposerPackage::global('baptouuuu/series'),
             // Config
             new CreateFolder('Sites'),
+            new CreateFolder('.series'),
+            new CreateFolder('.kalmiya'),
             Mackup::useICloud(),
             Mackup::restore(),
             VimRC::syntaxOn(),
