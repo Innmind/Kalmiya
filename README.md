@@ -24,3 +24,9 @@ composer global require innmind/kalmiya
 
 - `backup` will copy all the files from the folders `Desktop`, `Documents`, `Downloads` and `Movies` from your home folder to an external drive that must be named `Backup` in a folder named after your user name.
 - `restore` does the inverse operation of `backup`
+
+### Setup
+
+```sh
+cd $HOME && bash -c "$(curl -fsSL https://raw.githubusercontent.com/Innmind/Kalmiya/master/setup.sh)"
+```
