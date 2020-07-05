@@ -45,6 +45,7 @@ function cli(
         Path::of('Documents/'),
         Path::of('Downloads/'),
         Path::of('Movies/'),
+        Path::of('Library/Services/'),
         Path::of('.series/'),
         Path::of('.kalmiya/'),
     );
