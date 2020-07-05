@@ -10,3 +10,4 @@ set -e
 brew install php
 brew install composer
 composer global require innmind/kalmiya
+composer global exec 'kalmiya setup' -v
