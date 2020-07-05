@@ -40,5 +40,6 @@
     "require-dev": {
         "phpunit/phpunit": "~8.0",
         "vimeo/psalm": "^3.7 <3.11"
-    }
+    },
+    "bin": ["kalmiya"]
 }
