@@ -33,7 +33,8 @@ function cli(
     IPC $ipc,
     Path $httpServer,
     Path $home,
-    Path $backup
+    Path $backup,
+    Path $codeBackup
 ): array {
     $http = new HttpTransport\RetryOnNotFound(
         $os->remote()->http(),
@@ -109,6 +110,11 @@ function cli(
             new Render,
             $os->control(),
             $os->status()->tmp(),
+        ),
+        new Command\NewProject(
+            $os,
+            $home->resolve(Path::of('Sites/')),
+            $codeBackup,
         ),
     ];
 }
