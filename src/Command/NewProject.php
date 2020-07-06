@@ -112,7 +112,7 @@ final class NewProject implements Command
                 ->withShortOption('b', 'develop')
                 ->withWorkingDirectory($projectPath),
             Server\Command::foreground('open')
-                ->withArgument("https://github.com/$vendor/repositories/new"),
+                ->withArgument("https://github.com/organizations/$vendor/repositories/new"),
             Server\Command::foreground('open')
                 ->withShortOption('a', 'Sublime Text')
                 ->withArgument($projectPath->toString()),
