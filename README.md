@@ -13,7 +13,13 @@ composer global require innmind/kalmiya
 
 ## Usage
 
-#### Apple Music
+### Work
+
+- `new` will create a new project on the machine with the backup remote and will open GitHub to create the repository
+- `work` will open Sublime Text and iTerm to the specified project
+- `graph` will open a [dependency graph](https://github.com/innmind/dependencygraph#examples) of a vendor (default `innmind`) to have an overview of what's need to be updated and in which order
+
+### Apple Music
 
 **Note**: You need a developer account to be able to use the commands below, as you need to create an app in your Apple developer account (see [documentation](https://help.apple.com/developer-account/#/devce5522674)).
 
