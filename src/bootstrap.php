@@ -71,6 +71,8 @@ function cli(
         $backup,
     );
 
+    $projects = $home->resolve(Path::of('Sites/'));
+
     $package = new Loader\Package($http);
     $vendor = new Loader\Vendor($http, $package);
 
@@ -113,8 +115,12 @@ function cli(
         ),
         new Command\NewProject(
             $os,
-            $home->resolve(Path::of('Sites/')),
+            $projects,
             $codeBackup,
+        ),
+        new Command\Work(
+            $os->control(),
+            $projects,
         ),
     ];
 }
