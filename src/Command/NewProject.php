@@ -111,6 +111,9 @@ final class NewProject implements Command
                 ->withArgument('checkout')
                 ->withShortOption('b', 'develop')
                 ->withWorkingDirectory($projectPath),
+            Server\Command::foreground('composer')
+                ->withArgument('install')
+                ->withWorkingDirectory($projectPath),
             Server\Command::foreground('open')
                 ->withArgument("https://github.com/organizations/$vendor/repositories/new"),
             Server\Command::foreground('open')
