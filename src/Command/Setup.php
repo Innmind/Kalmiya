@@ -3,6 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command;
 
+use Innmind\Kalmiya\Gene\GenerateSshKey;
 use Innmind\CLI\{
     Command,
     Command\Arguments,
@@ -127,6 +128,7 @@ final class Setup implements Command
             Mackup::useICloud(),
             Mackup::restore(),
             VimRC::syntaxOn(),
+            new GenerateSshKey,
             // Apps
             Archiver::install(),
             CleanMyMacX::install(),
