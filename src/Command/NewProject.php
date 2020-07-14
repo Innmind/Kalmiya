@@ -80,6 +80,7 @@ final class NewProject implements Command
 
         $repository = $this->os->filesystem()->mount($projectPath);
         $template = $this->os->filesystem()->mount(Path::of(__DIR__.'/../../project-template/'));
+        $repository->add($template->get(new Name('.github')));
         $repository->add($template->get(new Name('.gitattributes')));
         $repository->add($template->get(new Name('.gitignore')));
         $repository->add($template->get(new Name('LICENSE')));
