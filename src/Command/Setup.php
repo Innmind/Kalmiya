@@ -38,6 +38,7 @@ use Innmind\Infrastructure\{
     MacOS\Gene\Paw,
     MacOS\Gene\Plex,
     MacOS\Gene\SublimeText,
+    MacOS\Gene\TablePlus,
     MacOS\Gene\Transmission,
     MacOS\Gene\VimRC,
 };
@@ -139,6 +140,7 @@ final class Setup implements Command
             Paw::install(),
             Plex::install('1.19.4.2935-79e214ead-x86_64'),
             SublimeText::install(),
+            TablePlus::install(),
             Transmission::install('3.00'),
             LittleSnitch::install('4.5.2'),
         );
