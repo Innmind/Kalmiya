@@ -3,6 +3,7 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command;
 
+use Innmind\Kalmiya\Gene\GenerateSshKey;
 use Innmind\CLI\{
     Command,
     Command\Arguments,
@@ -38,6 +39,7 @@ use Innmind\Infrastructure\{
     MacOS\Gene\Paw,
     MacOS\Gene\Plex,
     MacOS\Gene\SublimeText,
+    MacOS\Gene\TablePlus,
     MacOS\Gene\Transmission,
     MacOS\Gene\VimRC,
 };
@@ -126,6 +128,7 @@ final class Setup implements Command
             Mackup::useICloud(),
             Mackup::restore(),
             VimRC::syntaxOn(),
+            new GenerateSshKey,
             // Apps
             Archiver::install(),
             CleanMyMacX::install(),
@@ -139,6 +142,7 @@ final class Setup implements Command
             Paw::install(),
             Plex::install('1.19.4.2935-79e214ead-x86_64'),
             SublimeText::install(),
+            TablePlus::install(),
             Transmission::install('3.00'),
             LittleSnitch::install('4.5.2'),
         );
