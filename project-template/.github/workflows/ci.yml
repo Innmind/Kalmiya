@@ -12,6 +12,7 @@ jobs:
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Roave BC Check
         uses: docker://nyholm/roave-bc-check-ga
+        continue-on-error: true
   phpunit:
     runs-on: ${{ matrix.os }}
     strategy:
