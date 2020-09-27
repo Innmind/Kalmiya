@@ -1,6 +1,6 @@
 # {package}
 
-[![Build Status](https://github.com/{vendor}/{package}/workflows/CI/badge.svg)](https://github.com/{vendor}/{package}/actions?query=workflow%3ACI)
+[![Build Status](https://github.com/{vendor}/{package}/workflows/CI/badge.svg?branch=master)](https://github.com/{vendor}/{package}/actions?query=workflow%3ACI)
 [![codecov](https://codecov.io/gh/{vendor}/{package}/branch/develop/graph/badge.svg)](https://codecov.io/gh/{vendor}/{package})
 [![Type Coverage](https://shepherd.dev/github/{vendor}/{package}/coverage.svg)](https://shepherd.dev/github/{vendor}/{package})
 
