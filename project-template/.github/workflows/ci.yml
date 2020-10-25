@@ -19,6 +19,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest]
         php-version: ['7.4']
+        dependencies: ['lowest', 'highest']
     name: 'PHPUnit'
     steps:
       - name: Checkout
@@ -36,9 +37,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-
+          key: ${{ runner.os }}-${{ matrix.php-version }}-${{ matrix.dependencies }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php-version }}-${{ matrix.dependencies }}-composer-
       - name: Install Dependencies
+        if: ${{ matrix.dependencies == 'lowest' }}
+        run: composer update --prefer-lowest --no-progress
+      - name: Install Dependencies
+        if: ${{ matrix.dependencies == 'highest' }}
         run: composer install --no-progress
       - name: PHPUnit
         run: vendor/bin/phpunit
@@ -50,6 +55,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macOS-latest]
         php-version: ['7.4']
+        dependencies: ['lowest', 'highest']
     name: 'Coverage'
     steps:
       - name: Checkout
@@ -67,9 +73,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-
+          key: ${{ runner.os }}-${{ matrix.php-version }}-${{ matrix.dependencies }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php-version }}-${{ matrix.dependencies }}-composer-
       - name: Install Dependencies
+        if: ${{ matrix.dependencies == 'lowest' }}
+        run: composer update --prefer-lowest --no-progress
+      - name: Install Dependencies
+        if: ${{ matrix.dependencies == 'highest' }}
         run: composer install --no-progress
       - name: PHPUnit
         run: vendor/bin/phpunit --coverage-clover=coverage.clover
@@ -83,6 +93,7 @@ jobs:
     strategy:
       matrix:
         php-version: ['7.4']
+        dependencies: ['lowest', 'highest']
     name: 'Psalm'
     steps:
       - name: Checkout
@@ -99,9 +110,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.json') }}
-          restore-keys: ${{ runner.os }}-composer-
+          key: ${{ runner.os }}-${{ matrix.php-version }}-${{ matrix.dependencies }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php-version }}-${{ matrix.dependencies }}-composer-
       - name: Install Dependencies
+        if: ${{ matrix.dependencies == 'lowest' }}
+        run: composer update --prefer-lowest --no-progress
+      - name: Install Dependencies
+        if: ${{ matrix.dependencies == 'highest' }}
         run: composer install --no-progress
       - name: Psalm
         run: vendor/bin/psalm --shepherd
