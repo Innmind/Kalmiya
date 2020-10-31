@@ -24,7 +24,7 @@
         "innmind/templating": "^2.0",
         "innmind/ipc": "^3.0",
         "innmind/genome": "^3.0",
-        "innmind/infrastructure": "^1.1",
+        "innmind/infrastructure": "^1.1.2",
         "innmind/dependency-graph": "^2.0"
     },
     "autoload": {
