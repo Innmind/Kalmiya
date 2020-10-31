@@ -1,6 +1,6 @@
 # Kalmiya
 
-[![Build Status](https://github.com/Innmind/Kalmiya/workflows/CI/badge.svg)](https://github.com/Innmind/Kalmiya/actions?query=workflow%3ACI)
+[![Build Status](https://github.com/Innmind/Kalmiya/workflows/CI/badge.svg?branch=master)](https://github.com/Innmind/Kalmiya/actions?query=workflow%3ACI)
 [![Type Coverage](https://shepherd.dev/github/Innmind/Kalmiya/coverage.svg)](https://shepherd.dev/github/Innmind/Kalmiya)
 
 Personal tool to automatize most of the activities on my computer.
