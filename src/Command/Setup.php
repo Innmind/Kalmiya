@@ -144,7 +144,7 @@ final class Setup implements Command
             SublimeText::install(),
             TablePlus::install(),
             Transmission::install('3.00'),
-            LittleSnitch::install('4.5.2'),
+            LittleSnitch::install('5.0.4'),
         );
     }
 }
