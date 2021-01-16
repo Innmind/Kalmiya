@@ -135,7 +135,7 @@ final class Setup implements Command
             Dash::install(),
             Docker::install(),
             Flux::install(),
-            GPG::install('2020.1'),
+            GPG::install('2020.2'),
             IStatMenus::install(),
             ITerm::install(),
             MicroSnitch::install(),
