@@ -10,6 +10,7 @@ use MusicCompanion\AppleMusic\SDK\{
     Library\Artist,
     Catalog,
 };
+use Innmind\Url\Scheme;
 use Innmind\Immutable\Str;
 
 final class Markdown implements Format
@@ -52,8 +53,11 @@ final class Markdown implements Format
         }
 
         if ($album instanceof Catalog\Album) {
-            $url = $album->url()->toString();
-            $albumName = "[$albumName]($url?ls=1)";
+            $url = $album
+                ->url()
+                ->withScheme(new Scheme('itmss'))
+                ->toString();
+            $albumName = "[$albumName]($url)";
         }
 
         $this

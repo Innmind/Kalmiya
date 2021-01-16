@@ -16,6 +16,7 @@ use MusicCompanion\AppleMusic\SDK\{
     Library\Artist,
     Catalog,
 };
+use Innmind\Url\Scheme;
 use Innmind\Immutable\Str;
 
 final class Pretty implements Format
@@ -40,9 +41,11 @@ final class Pretty implements Format
             return;
         }
 
-        $this->env->output()->write(Str::of(
-            "{$album->url()->toString()}?ls=1\n\n"
-        ));
+        $url = $album
+            ->url()
+            ->withScheme(new Scheme('itmss'))
+            ->toString();
+        $this->env->output()->write(Str::of("$url\n\n"));
     }
 
     /**
