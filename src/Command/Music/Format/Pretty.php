@@ -43,7 +43,7 @@ final class Pretty implements Format
 
         $url = $album
             ->url()
-            ->withScheme(new Scheme('itmss'))
+            ->withScheme(Scheme::of('itmss'))
             ->toString();
         $this->env->output()->write(Str::of("$url\n\n"));
     }

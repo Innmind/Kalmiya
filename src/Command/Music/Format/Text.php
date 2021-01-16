@@ -32,7 +32,7 @@ final class Text implements Format
         if ($album instanceof Catalog\Album) {
             $url = $album
                 ->url()
-                ->withScheme(new Scheme('itmss'))
+                ->withScheme(Scheme::of('itmss'))
                 ->toString();
             $this->env->output()->write(Str::of(
                 " ||| $url",
