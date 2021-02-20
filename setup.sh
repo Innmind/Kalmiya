@@ -12,7 +12,7 @@ fi
 # somehow to watch that the installer has done its job)
 
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install.sh)"
-brew install php@7.4
+brew install php@8.0
 brew install composer
 composer global require innmind/kalmiya
 composer global exec 'kalmiya setup' -v
