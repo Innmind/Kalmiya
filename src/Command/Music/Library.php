@@ -13,7 +13,6 @@ use Innmind\CLI\{
     Command\Options,
     Environment,
 };
-use MusicCompanion\AppleMusic\SDK;
 use Innmind\Filesystem\{
     Adapter,
     Name,

@@ -70,6 +70,11 @@ final class Authenticate implements Command
         }
     }
 
+    public function toString(): string
+    {
+        return $this->attempt->toString();
+    }
+
     private function configure(Environment $env): void
     {
         if ($this->config->contains(new Name('apple-music'))) {
@@ -101,6 +106,7 @@ final class Authenticate implements Command
 
         if (!$appleMusic->contains(new Name('certificate'))) {
             $certificate = Str::of('');
+
             do {
                 $ask = new Question('Certificate:');
                 $line = $ask($env, $this->sockets);
@@ -136,10 +142,5 @@ final class Authenticate implements Command
             throw new Stop;
         });
         $this->processes->kill($http->pid(), Signal::terminate());
-    }
-
-    public function toString(): string
-    {
-        return $this->attempt->toString();
     }
 }

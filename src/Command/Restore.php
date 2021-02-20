@@ -11,7 +11,6 @@ use Innmind\CLI\{
 };
 use Innmind\OperatingSystem\Filesystem;
 use Innmind\Filesystem\File;
-use Innmind\Server\Control\Server;
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Map,
@@ -58,7 +57,7 @@ final class Restore implements Command
                 ->filesystem
                 ->mount($source)
                 ->all()
-                ->foreach(function(File $file) use ($env, $target): void {
+                ->foreach(static function(File $file) use ($env, $target): void {
                     $env->output()->write(Str::of("{$file->name()->toString()}..."));
                     $target->add($file);
                     $env->output()->write(Str::of(" OK\n"));
