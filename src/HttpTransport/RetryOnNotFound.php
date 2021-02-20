@@ -25,6 +25,7 @@ final class RetryOnNotFound implements Transport
     public function __invoke(Request $request): Response
     {
         $i = 0;
+
         do {
             $response = ($this->fulfill)($request);
 

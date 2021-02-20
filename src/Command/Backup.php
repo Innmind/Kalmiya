@@ -72,7 +72,7 @@ final class Backup implements Command
                 ->filesystem
                 ->mount($source)
                 ->all()
-                ->foreach(function(File $file) use ($env, $target): void {
+                ->foreach(static function(File $file) use ($env, $target): void {
                     $env->output()->write(Str::of("{$file->name()->toString()}..."));
                     $target->add($file);
                     $env->output()->write(Str::of(" OK\n"));
