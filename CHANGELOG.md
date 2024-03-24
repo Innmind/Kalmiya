@@ -6,3 +6,4 @@
 
 - `setup` command
 - `work` command
+- `graph` command
