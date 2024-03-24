@@ -4,11 +4,11 @@ declare(strict_types = 1);
 namespace Innmind\Kalmiya\Command\Music\Format;
 
 use Innmind\Kalmiya\Command\Music\Format;
-use Innmind\CLI\Environment;
+use Innmind\CLI\Console;
 use Innmind\HttpTransport\Transport;
 use Innmind\Http\{
-    Message\Request\Request,
-    Message\Method,
+    Request,
+    Method,
     ProtocolVersion,
 };
 use MusicCompanion\AppleMusic\SDK\{
@@ -17,91 +17,100 @@ use MusicCompanion\AppleMusic\SDK\{
     Catalog,
 };
 use Innmind\Url\Scheme;
-use Innmind\Immutable\Str;
+use Innmind\Immutable\{
+    Str,
+    Maybe,
+};
 
 final class Pretty implements Format
 {
-    private Environment $env;
     private Transport $fulfill;
 
-    public function __construct(Environment $env, Transport $fulfill)
+    public function __construct(Transport $fulfill)
     {
-        $this->env = $env;
         $this->fulfill = $fulfill;
     }
 
-    public function __invoke($album, Artist $artist): void
-    {
-        $this->env->output()->write(Str::of(
+    public function __invoke(
+        Console $console,
+        Library\Album|Catalog\Album $album,
+        Artist $artist,
+    ): Console {
+        $console = $console->output(Str::of(
             "{$artist->name()->toString()} ||| {$album->name()->toString()}\n",
         ));
-        $this->printArtwork($album);
+        $console = $this->printArtwork($console, $album);
 
         if ($album instanceof Library\Album) {
-            return;
+            return $console;
         }
 
         $url = $album
             ->url()
             ->withScheme(Scheme::of('itmss'))
             ->toString();
-        $this->env->output()->write(Str::of("$url\n\n"));
+
+        return $console->output(Str::of("$url\n\n"));
     }
 
-    /**
-     * @param Library\Album|Catalog\Album $album
-     */
-    private function printArtwork($album): void
-    {
-        if (!$album->hasArtwork()) {
-            return;
+    private function printArtwork(
+        Console $console,
+        Library\Album|Catalog\Album $album,
+    ): Console {
+        if (!$console->interactive()) {
+            return $console;
         }
 
-        if (!$this->env->interactive()) {
-            return;
-        }
+        $inIterm = $console
+            ->variables()
+            ->get('LC_TERMINAL')
+            ->filter(static fn($value) => $value === 'iTerm2')
+            ->match(
+                static fn() => true,
+                static fn() => false,
+            );
 
-        if (!$this->env->variables()->contains('LC_TERMINAL')) {
-            return;
-        }
-
-        if ($this->env->variables()->get('LC_TERMINAL') !== 'iTerm2') {
-            return;
+        if (!$inIterm) {
+            return $console;
         }
 
         if ($album instanceof Library\Album) {
-            $widthClass = Library\Album\Artwork\Width::class;
-            $heightClass = Library\Album\Artwork\Height::class;
+            $url = $album->artwork()->map(static fn($artwork) => $artwork->ofSize(
+                Library\Album\Artwork\Width::of(300),
+                Library\Album\Artwork\Height::of(300),
+            ));
         } else {
-            $widthClass = Catalog\Artwork\Width::class;
-            $heightClass = Catalog\Artwork\Height::class;
+            $url = $album->artwork()->ofSize(
+                Catalog\Artwork\Width::of(300),
+                Catalog\Artwork\Height::of(300),
+            );
+            $url = Maybe::just($url);
         }
 
-        try {
-            /** @psalm-suppress PossiblyInvalidArgument */
-            $artwork = ($this->fulfill)(new Request(
-                $album->artwork()->ofSize(new $widthClass(300), new $heightClass(300)),
-                Method::get(),
-                new ProtocolVersion(1, 1),
-            ))->body();
-        } catch (\Exception $e) {
-            // sometimes it fails with the message "Received HTTP/0.9 when not allowed"
-            // discard such error for the moment
-            return;
-        }
-
-        if (!$artwork->knowsSize()) {
-            return;
-        }
-
-        $output = $this->env->output();
-        // @see https://www.iterm2.com/documentation-images.html
-        $output->write(Str::of("\033]")); // OSC
-        $output->write(Str::of('1337;File='));
-        $output->write(Str::of("size={$artwork->size()->toInt()}"));
-        $output->write(Str::of(';width=300px;inline=1:'));
-        $output->write(Str::of(\base64_encode($artwork->toString())));
-        $output->write(Str::of(\chr(7))); // bell character
-        $output->write(Str::of("\n"));
+        return $url
+            ->map(static fn($url) => Request::of(
+                $url,
+                Method::get,
+                ProtocolVersion::v11,
+            ))
+            ->flatMap(fn($request) => ($this->fulfill)($request)->maybe())
+            ->map(static fn($success) => $success->response()->body())
+            ->match(
+                static fn($artwork) => $artwork
+                    ->size()
+                    ->match(
+                        // @see https://www.iterm2.com/documentation-images.html
+                        static fn($size) => $console
+                            ->output(Str::of("\033]")) // OSC
+                            ->output(Str::of('1337;File='))
+                            ->output(Str::of("size={$size->toInt()}"))
+                            ->output(Str::of(';width=300px;inline=1:'))
+                            ->output(Str::of(\base64_encode($artwork->toString())))
+                            ->output(Str::of(\chr(7))) // bell character
+                            ->output(Str::of("\n")),
+                        static fn() => $console,
+                    ),
+                static fn() => $console,
+            );
     }
 }
