@@ -6,40 +6,33 @@ namespace Innmind\Kalmiya\Command\Music;
 use Innmind\Kalmiya\Exception\AppleMusicNotConfigured;
 use Innmind\CLI\{
     Command,
-    Command\Arguments,
-    Command\Options,
-    Environment,
+    Console,
     Question\Question,
 };
 use Innmind\Filesystem\{
     Adapter,
-    Directory\Directory,
+    Directory,
     Name,
-    File\File,
+    File,
+    File\Content,
 };
-use Innmind\OperatingSystem\Sockets;
-use Innmind\IPC\{
-    Server,
-    Exception\Stop,
-};
+use Innmind\IPC\Server;
 use Innmind\Server\Control\Server\{
     Processes,
     Command as ServerCommand,
     Signal,
 };
-use Innmind\Stream\Readable\Stream;
 use Innmind\Url\Path;
-use Innmind\Immutable\Str;
-use MusicCompanion\AppleMusic\Exception\{
-    InvalidToken,
-    InvalidUserToken,
+use Innmind\Immutable\{
+    Str,
+    Sequence,
+    Predicate\Instance,
 };
 
 final class Authenticate implements Command
 {
     private Command $attempt;
     private Adapter $config;
-    private Sockets $sockets;
     private Processes $processes;
     private Server $listen;
     private Path $httpServer;
@@ -47,77 +40,88 @@ final class Authenticate implements Command
     public function __construct(
         Command $attempt,
         Adapter $config,
-        Sockets $sockets,
         Processes $processes,
         Server $listen,
         Path $httpServer,
     ) {
         $this->attempt = $attempt;
         $this->config = $config;
-        $this->sockets = $sockets;
         $this->processes = $processes;
         $this->listen = $listen;
         $this->httpServer = $httpServer;
     }
 
-    public function __invoke(Environment $env, Arguments $arguments, Options $options): void
+    public function __invoke(Console $console): Console
     {
         try {
-            ($this->attempt)($env, $arguments, $options);
-        } catch (AppleMusicNotConfigured | InvalidToken | InvalidUserToken $e) {
-            $this->configure($env);
-            ($this->attempt)($env, $arguments, $options);
+            return ($this->attempt)($console);
+        } catch (AppleMusicNotConfigured $e) {
+            $console = $this->configure($console);
+
+            return ($this->attempt)($console);
         }
     }
 
-    public function toString(): string
+    /**
+     * @psalm-mutation-free
+     */
+    public function usage(): string
     {
-        return $this->attempt->toString();
+        return $this->attempt->usage();
     }
 
-    private function configure(Environment $env): void
+    private function configure(Console $console): Console
     {
-        if ($this->config->contains(new Name('apple-music'))) {
-            /** @var Directory */
-            $appleMusic = $this->config->get(new Name('apple-music'));
-        } else {
-            $appleMusic = Directory::named('apple-music');
-        }
+        $appleMusic = $this
+            ->config
+            ->get(Name::of('apple-music'))
+            ->keep(Instance::of(Directory::class))
+            ->match(
+                static fn($appleMusic) => $appleMusic,
+                static fn() => Directory::named('apple-music'),
+            );
 
-        if (!$appleMusic->contains(new Name('id'))) {
+        if (!$appleMusic->contains(Name::of('id'))) {
             $ask = new Question('Id:');
-            $id = $ask($env, $this->sockets);
+            [$id, $console] = $ask($console);
 
+            $id = $id->match(
+                static fn($id) => $id,
+                static fn() => throw new \LogicException('todo'),
+            );
             $appleMusic = $appleMusic->add(File::named(
                 'id',
-                Stream::ofContent($id->toString()),
+                Content::ofString($id->toString()),
             ));
         }
 
-        if (!$appleMusic->contains(new Name('team-id'))) {
+        if (!$appleMusic->contains(Name::of('team-id'))) {
             $ask = new Question('Team id:');
-            $teamId = $ask($env, $this->sockets);
+            [$teamId, $console] = $ask($console);
 
+            $teamId = $teamId->match(
+                static fn($teamId) => $teamId,
+                static fn() => throw new \LogicException('todo'),
+            );
             $appleMusic = $appleMusic->add(File::named(
                 'team-id',
-                Stream::ofContent($teamId->toString()),
+                Content::ofString($teamId->toString()),
             ));
         }
 
-        if (!$appleMusic->contains(new Name('certificate'))) {
-            $certificate = Str::of('');
+        if (!$appleMusic->contains(Name::of('certificate'))) {
+            /** @var Sequence<Str> */
+            $certificate = Sequence::of();
 
             do {
                 $ask = new Question('Certificate:');
-                $line = $ask($env, $this->sockets);
-                $certificate = $certificate
-                    ->append($line->toString())
-                    ->append("\n");
-            } while (!$certificate->contains('END PRIVATE KEY'));
+                [$line, $console] = $ask($console);
+                $certificate = $certificate->append($line->toSequence());
+            } while (!$certificate->any(static fn($line) => $line->contains('END PRIVATE KEY')));
 
             $appleMusic = $appleMusic->add(File::named(
                 'certificate',
-                Stream::ofContent($certificate->toString()),
+                Content::ofLines($certificate->map(Content\Line::of(...))),
             ));
         }
 
@@ -128,19 +132,39 @@ final class Authenticate implements Command
                 ->withShortOption('S', 'localhost:8080')
                 ->withWorkingDirectory($this->httpServer),
         );
-        $this
+        $_ = $this
             ->processes
             ->execute(
                 ServerCommand::foreground('open')
                     ->withArgument('http://localhost:8080'),
             )
-            ->wait();
+            ->wait()
+            ->match(
+                static fn() => null,
+                static fn() => null,
+            );
 
-        ($this->listen)(static function(): void {
-            // the only message that we can receive is when the user token has
-            // been persisted
-            throw new Stop;
-        });
-        $this->processes->kill($http->pid(), Signal::terminate());
+        // the only message that we can receive is when the user token has
+        // been persisted
+        $console = ($this->listen)(
+            null,
+            static fn($_, $continuation) => $continuation->stop(null),
+        )->match(
+            static fn() => $console->output(Str::of("Apple Music token received\n")),
+            static fn() => $console
+                ->output(Str::of("Failed to receive the Apple Music token\n"))
+                ->exit(1),
+        );
+        $console = $http
+            ->pid()
+            ->map(fn($pid) => $this->processes->kill($pid, Signal::terminate))
+            ->match(
+                static fn() => $console,
+                static fn() => $console
+                    ->output(Str::of("Failed to stop the HTTP server\n"))
+                    ->exit(1),
+            );
+
+        return $console;
     }
 }
