@@ -8,10 +8,15 @@ use Innmind\Filesystem\{
     Adapter,
     Name,
     Directory,
+    File,
 };
 use Innmind\HttpTransport\Transport;
 use Innmind\TimeContinuum\Clock;
 use Innmind\TimeContinuum\Earth\Period\Hour;
+use Innmind\Immutable\{
+    Maybe,
+    Predicate\Instance,
+};
 use MusicCompanion\AppleMusic\{
     SDK,
     Key,
@@ -38,24 +43,37 @@ final class SDKFactory
      */
     public function __invoke(): SDK
     {
-        if (!$this->config->contains(new Name('apple-music'))) {
-            throw new AppleMusicNotConfigured;
-        }
-
-        /** @var Directory */
-        $appleMusic = $this->config->get(new Name('apple-music'));
-
-        return new SDK\SDK(
-            $this->clock,
-            $this->http,
-            new Key(
-                \trim($appleMusic->get(new Name('id'))->content()->toString()),
-                \trim($appleMusic->get(new Name('team-id'))->content()->toString()),
-                $appleMusic
-                    ->get(new Name('certificate'))
-                    ->content(),
-            ),
-            new Hour(24),
-        );
+        return $this
+            ->config
+            ->get(Name::of('apple-music'))
+            ->keep(Instance::of(Directory::class))
+            ->flatMap(
+                static fn($appleMusic) => Maybe::all(
+                    $appleMusic
+                        ->get(Name::of('id'))
+                        ->keep(Instance::of(File::class))
+                        ->map(static fn($file) => $file->content()->toString())
+                        ->map(\trim(...)),
+                    $appleMusic
+                        ->get(Name::of('team-id'))
+                        ->keep(Instance::of(File::class))
+                        ->map(static fn($file) => $file->content()->toString())
+                        ->map(\trim(...)),
+                    $appleMusic
+                        ->get(Name::of('certificate'))
+                        ->keep(Instance::of(File::class))
+                        ->map(static fn($file) => $file->content()),
+                )->map(Key::of(...)),
+            )
+            ->map(fn($key) => SDK::of(
+                $this->clock,
+                $this->http,
+                $key,
+                new Hour(24),
+            ))
+            ->match(
+                static fn($sdk) => $sdk,
+                static fn() => throw new AppleMusicNotConfigured,
+            );
     }
 }
