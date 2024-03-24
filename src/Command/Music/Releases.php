@@ -12,8 +12,6 @@ use Innmind\CLI\{
 };
 use MusicCompanion\AppleMusic\SDK\Catalog\{
     Album,
-    Artwork\Width,
-    Artwork\Height,
     Artist,
 };
 use Innmind\Filesystem\{
@@ -46,7 +44,7 @@ final class Releases implements Command
         SDKFactory $makeSDK,
         Adapter $config,
         Clock $clock,
-        Transport $fulfill
+        Transport $fulfill,
     ) {
         $this->makeSDK = $makeSDK;
         $this->config = $config;

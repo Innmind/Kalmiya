@@ -28,7 +28,7 @@ final class NewProject implements Command
     public function __construct(
         OperatingSystem $os,
         Path $projects,
-        Path $backup
+        Path $backup,
     ) {
         $this->os = $os;
         $this->projects = $projects;
@@ -140,7 +140,7 @@ final class NewProject implements Command
         Adapter $template,
         string $file,
         string $vendor,
-        string $package
+        string $package,
     ): File {
         $content = $template
             ->get(new Name($file))

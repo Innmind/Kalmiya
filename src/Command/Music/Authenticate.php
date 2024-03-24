@@ -50,7 +50,7 @@ final class Authenticate implements Command
         Sockets $sockets,
         Processes $processes,
         Server $listen,
-        Path $httpServer
+        Path $httpServer,
     ) {
         $this->attempt = $attempt;
         $this->config = $config;
@@ -132,7 +132,7 @@ final class Authenticate implements Command
             ->processes
             ->execute(
                 ServerCommand::foreground('open')
-                    ->withArgument('http://localhost:8080')
+                    ->withArgument('http://localhost:8080'),
             )
             ->wait();
 

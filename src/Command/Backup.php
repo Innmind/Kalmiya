@@ -40,7 +40,7 @@ final class Backup implements Command
         Filesystem $filesystem,
         Server\Processes $processes,
         Map $backups,
-        Set $foldersToOpen
+        Set $foldersToOpen,
     ) {
         assertMap(Path::class, Path::class, $backups, 2);
         assertSet(Path::class, $foldersToOpen, 3);

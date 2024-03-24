@@ -41,7 +41,7 @@ final class AppleMusic implements RequestHandler
         Engine $render,
         Adapter $config,
         IPC $ipc,
-        Process\Name $cli
+        Process\Name $cli,
     ) {
         $this->makeSDK = $makeSDK;
         $this->render = $render;

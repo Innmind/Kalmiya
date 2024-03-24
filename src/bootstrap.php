@@ -14,7 +14,6 @@ use Innmind\IPC\{
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Set,
-    Map,
 };
 use Innmind\CLI;
 use Innmind\HttpFramework;
@@ -30,7 +29,7 @@ function cli(
     Path $httpServer,
     Path $home,
     Path $backup,
-    Path $codeBackup
+    Path $codeBackup,
 ): array {
     $http = new HttpTransport\RetryOnNotFound(
         $os->remote()->http(),
@@ -107,7 +106,7 @@ function http(
     Transport $http,
     Clock $clock,
     Path $templates,
-    IPC $ipc
+    IPC $ipc,
 ): HttpFramework\RequestHandler {
     return new RequestHandler\AppleMusic(
         new AppleMusic\SDKFactory($config, $http, $clock),

@@ -33,7 +33,7 @@ final class Pretty implements Format
     public function __invoke($album, Artist $artist): void
     {
         $this->env->output()->write(Str::of(
-            "{$artist->name()->toString()} ||| {$album->name()->toString()}\n"
+            "{$artist->name()->toString()} ||| {$album->name()->toString()}\n",
         ));
         $this->printArtwork($album);
 

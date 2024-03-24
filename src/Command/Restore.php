@@ -14,7 +14,6 @@ use Innmind\Filesystem\File;
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Map,
-    Set,
     Str,
 };
 use function Innmind\Immutable\assertMap;

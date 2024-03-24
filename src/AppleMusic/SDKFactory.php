@@ -26,7 +26,7 @@ final class SDKFactory
     public function __construct(
         Adapter $config,
         Transport $http,
-        Clock $clock
+        Clock $clock,
     ) {
         $this->config = $config;
         $this->http = $http;

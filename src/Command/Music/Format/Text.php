@@ -6,7 +6,6 @@ namespace Innmind\Kalmiya\Command\Music\Format;
 use Innmind\Kalmiya\Command\Music\Format;
 use Innmind\CLI\Environment;
 use MusicCompanion\AppleMusic\SDK\{
-    Library,
     Library\Artist,
     Catalog,
 };
