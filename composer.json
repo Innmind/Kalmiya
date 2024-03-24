@@ -15,7 +15,7 @@
         "issues": "http://github.com/Innmind/Kalmiya/issues"
     },
     "require": {
-        "php": "~7.4|~8.0",
+        "php": "~8.2",
         "innmind/cli": "~2.0",
         "music-companion/apple-music": "~2.0",
         "innmind/cli-framework": "^1.2",
