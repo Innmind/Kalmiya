@@ -43,7 +43,6 @@ function cli(
 
     $sdkFactory = new AppleMusic\SDKFactory($config, $http, $os->clock());
     $ipcServer = $ipc->listen(new Process\Name('apple-music'));
-    /** @var Set<Path> */
     $backups = Set::of(
         Path::class,
         Path::of('Desktop/'),
@@ -54,7 +53,6 @@ function cli(
         Path::of('.series/'),
         Path::of('.kalmiya/'),
     );
-    /** @var Map<Path, Path> */
     $backups = $backups->toMapOf(
         Path::class,
         Path::class,

@@ -133,7 +133,6 @@ final class Releases implements Command
                         Set::of(Artist\Id::class),
                         static fn(Set $ids, Album $album): Set => $ids->merge($album->artists()),
                     );
-                /** @var Set<Artist> */
                 $artists = $ids->toSetOf(
                     Artist::class,
                     static function(Artist\Id $id) use ($catalog): \Generator {
