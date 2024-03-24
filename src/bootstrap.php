@@ -101,10 +101,6 @@ function cli(
             $os->filesystem(),
             $backups,
         ),
-        new Command\Setup(
-            Command\Setup::genome(),
-            $os,
-        ),
         new Command\Graph(
             new Loader\VendorDependencies($vendor, $package),
             new Render,
