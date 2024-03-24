@@ -5,3 +5,4 @@
 ### Removed
 
 - `setup` command
+- `work` command

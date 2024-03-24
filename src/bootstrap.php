@@ -112,10 +112,6 @@ function cli(
             $projects,
             $codeBackup,
         ),
-        new Command\Work(
-            $os->control(),
-            $projects,
-        ),
     ];
 }
 
