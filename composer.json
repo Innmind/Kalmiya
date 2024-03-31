@@ -19,7 +19,8 @@
         "innmind/framework": "~2.2",
         "music-companion/apple-music": "~4.0",
         "innmind/ipc": "~4.4",
-        "innmind/dependency-graph": "~3.6"
+        "innmind/dependency-graph": "~3.6",
+        "innmind/validation": "^1.4"
     },
     "autoload": {
         "psr-4": {
