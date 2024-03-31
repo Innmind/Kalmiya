@@ -5,22 +5,15 @@ namespace Innmind\Kalmiya\Command;
 
 use Innmind\CLI\{
     Command,
-    Command\Arguments,
-    Command\Options,
-    Environment,
+    Console,
 };
 use Innmind\OperatingSystem\Filesystem;
-use Innmind\Filesystem\File;
 use Innmind\Server\Control\Server;
 use Innmind\Url\Path;
 use Innmind\Immutable\{
     Map,
     Set,
     Str,
-};
-use function Innmind\Immutable\{
-    assertMap,
-    assertSet,
 };
 
 final class Backup implements Command
@@ -42,42 +35,44 @@ final class Backup implements Command
         Map $backups,
         Set $foldersToOpen,
     ) {
-        assertMap(Path::class, Path::class, $backups, 2);
-        assertSet(Path::class, $foldersToOpen, 3);
-
         $this->filesystem = $filesystem;
         $this->processes = $processes;
         $this->backups = $backups;
         $this->foldersToOpen = $foldersToOpen;
     }
 
-    public function __invoke(Environment $env, Arguments $arguments, Options $options): void
+    public function __invoke(Console $console): Console
     {
-        $this->backups->foreach(function(Path $source, Path $target) use ($env): void {
-            if (!$this->filesystem->contains($source)) {
-                $env->output()->write(Str::of("Backup source {$source->toString()} not accessible\n"));
+        $console = $this->backups->reduce(
+            $console,
+            function(Console $console, Path $source, Path $target) {
+                if (!$this->filesystem->contains($source)) {
+                    return $console->output(Str::of("Backup source {$source->toString()} not accessible\n"));
+                }
 
-                return;
-            }
+                if (!$this->filesystem->contains($target)) {
+                    return $console->output(Str::of("Backup target {$target->toString()} not accessible\n"));
+                }
 
-            if (!$this->filesystem->contains($target)) {
-                $env->output()->write(Str::of("Backup target {$target->toString()} not accessible\n"));
+                $console = $console->output(Str::of("Backuping {$source->toString()} to {$target->toString()}:\n"));
+                $target = $this->filesystem->mount($target);
 
-                return;
-            }
+                return $this
+                    ->filesystem
+                    ->mount($source)
+                    ->root()
+                    ->all()
+                    ->reduce(
+                        $console,
+                        static function(Console $console, $file) use ($target) {
+                            $console = $console->output(Str::of("{$file->name()->toString()}..."));
+                            $target->add($file);
 
-            $env->output()->write(Str::of("Backuping {$source->toString()} to {$target->toString()}:\n"));
-            $target = $this->filesystem->mount($target);
-            $this
-                ->filesystem
-                ->mount($source)
-                ->all()
-                ->foreach(static function(File $file) use ($env, $target): void {
-                    $env->output()->write(Str::of("{$file->name()->toString()}..."));
-                    $target->add($file);
-                    $env->output()->write(Str::of(" OK\n"));
-                });
-        });
+                            return $console->output(Str::of(" OK\n"));
+                        },
+                    );
+            },
+        );
         $this->foldersToOpen->foreach(function(Path $folder): void {
             $this
                 ->processes
@@ -87,9 +82,14 @@ final class Backup implements Command
                 )
                 ->wait();
         });
+
+        return $console;
     }
 
-    public function toString(): string
+    /**
+     * @psalm-mutation-free
+     */
+    public function usage(): string
     {
         return 'backup';
     }

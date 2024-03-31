@@ -5,18 +5,14 @@ namespace Innmind\Kalmiya\Command;
 
 use Innmind\CLI\{
     Command,
-    Command\Arguments,
-    Command\Options,
-    Environment,
+    Console,
 };
 use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\Server\Control\Server;
 use Innmind\Filesystem\{
-    Adapter,
-    File\File,
+    File,
     Name,
 };
-use Innmind\Stream\Readable\Stream;
 use Innmind\Url\Path;
 
 final class NewProject implements Command
@@ -35,10 +31,10 @@ final class NewProject implements Command
         $this->backup = $backup;
     }
 
-    public function __invoke(Environment $env, Arguments $arguments, Options $options): void
+    public function __invoke(Console $console): Console
     {
-        $vendor = $arguments->get('vendor');
-        $package = $arguments->get('package');
+        $vendor = $console->arguments()->get('vendor');
+        $package = $console->arguments()->get('package');
         $projectPath = $this->projects->resolve(Path::of("$vendor/$package/"));
         $backupPath = $this->backup->resolve(Path::of("$vendor/$package/"));
         $commands = [
@@ -80,24 +76,14 @@ final class NewProject implements Command
 
         $repository = $this->os->filesystem()->mount($projectPath);
         $template = $this->os->filesystem()->mount(Path::of(__DIR__.'/../../project-template/'));
-        $repository->add($template->get(new Name('.github')));
-        $repository->add($template->get(new Name('.gitattributes')));
-        $repository->add($template->get(new Name('.gitignore')));
-        $repository->add($template->get(new Name('LICENSE')));
-        $repository->add($template->get(new Name('phpunit.xml.dist')));
-        $repository->add($template->get(new Name('psalm.xml')));
-        $repository->add($this->template(
-            $template,
-            'composer.json',
-            $vendor,
-            $package,
-        ));
-        $repository->add($this->template(
-            $template,
-            'README.md',
-            $vendor,
-            $package,
-        ));
+        $_ = $template
+            ->root()
+            ->all()
+            ->map(static fn($file) => match (true) {
+                $file instanceof File => self::update($file, $vendor, $package),
+                default => $file,
+            })
+            ->foreach($repository->add(...));
 
         $finish = new Server\Script(
             Server\Command::foreground('git')
@@ -125,9 +111,14 @@ final class NewProject implements Command
                 ->withArgument($projectPath->toString()),
         );
         $finish($this->os->control());
+
+        return $console;
     }
 
-    public function toString(): string
+    /**
+     * @psalm-mutation-free
+     */
+    public function usage(): string
     {
         return <<<USAGE
         new vendor package
@@ -136,20 +127,35 @@ final class NewProject implements Command
         USAGE;
     }
 
-    private function template(
-        Adapter $template,
-        string $file,
+    public static function update(
+        File $file,
         string $vendor,
         string $package,
     ): File {
-        $content = $template
-            ->get(new Name($file))
-            ->content()
-            ->read()
-            ->replace('{vendor}', $vendor)
-            ->replace('{package}', $package)
-            ->toString();
+        if ($file->name()->str()->startsWith('dot-')) {
+            /** @psalm-suppress ArgumentTypeCoercion */
+            return $file->rename(Name::of(
+                $file
+                    ->name()
+                    ->str()
+                    ->drop(4)
+                    ->prepend('.')
+                    ->toString(),
+            ));
+        }
 
-        return File::named($file, Stream::ofContent($content));
+        if (\in_array($file->name()->toString(), ['composer.json', 'README.md'], true)) {
+            return $file->withContent(
+                $file->content()->map(
+                    static fn($line) => $line->map(
+                        static fn($str) => $str
+                            ->replace('{vendor}', $vendor)
+                            ->replace('{package}', $package),
+                    ),
+                ),
+            );
+        }
+
+        return $file;
     }
 }
