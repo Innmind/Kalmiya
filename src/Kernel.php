@@ -14,12 +14,24 @@ use Innmind\OperatingSystem\OperatingSystem\Resilient;
 use Innmind\IPC\{
     Factory as IPC,
     Process,
+    Message\Generic as Message,
+};
+use Innmind\Filesystem\{
+    File,
+    Name,
+    Directory,
+};
+use Innmind\Http\{
+    Response,
+    Response\StatusCode,
 };
 use Innmind\Url\Path;
+use Innmind\Validation\Is;
 use Innmind\Immutable\{
     Map,
     Sequence,
     Set,
+    Predicate\Instance,
 };
 
 final class Kernel implements Middleware
@@ -67,6 +79,12 @@ final class Kernel implements Middleware
                 Services::config,
                 static fn($get, $os) => $os->filesystem()->mount(
                     $get(Services::home())->resolve(Path::of('.kalmyia/')),
+                ),
+            )
+            ->service(
+                Services::templates,
+                static fn($_, $os) => $os->filesystem()->mount(
+                    Path::of('../templates/'),
                 ),
             )
             ->service(Services::ipc, static fn($_, $os) => IPC::build($os))
@@ -117,6 +135,67 @@ final class Kernel implements Middleware
                 $os,
                 $get(Services::home())->resolve(Path::of('Sites/')),
                 Path::of('/Volumes/Backup/Code/'),
-            ));
+            ))
+            ->route(
+                'GET /',
+                static function($request, $_, $get) {
+                    $sdk = $get(Services::appleMusic())();
+
+                    return Response::of(
+                        StatusCode::ok,
+                        $request->protocolVersion(),
+                        null,
+                        $get(Services::templates())
+                            ->get(Name::of('appleMusic.html'))
+                            ->keep(Instance::of(File::class))
+                            ->match(
+                                static fn($file) => $file->content(),
+                                static fn() => throw new \LogicException('Template not found'),
+                            )
+                            ->map(static fn($line) => $line->map(
+                                static fn($str) => $str->replace('{{ token }}', $sdk->jwt()),
+                            )),
+                    );
+                },
+            )
+            ->route(
+                'POST /',
+                static function($request, $_, $get, $os) {
+                    $config = $get(Services::config());
+                    $appleConfig = $config
+                        ->get(Name::of('apple-music'))
+                        ->keep(Instance::of(Directory::class))
+                        ->match(
+                            static fn($config) => $config,
+                            static fn() => Directory::named('apple-music'),
+                        );
+                    $request
+                        ->form()
+                        ->get('token')
+                        ->keep(Is::string()->asPredicate())
+                        ->map(File\Content::ofString(...))
+                        ->map(static fn($token) => File::named('user-token', $token))
+                        ->map($appleConfig->add(...))
+                        ->match(
+                            $config->add(...),
+                            static fn() => null,
+                        );
+
+                    $_ = $get(Services::ipc())
+                        ->get(Process\Name::of('apple-music'))
+                        ->flatMap(static fn($process) => $process->send(Sequence::of(
+                            Message::of('text/plain', 'ok'),
+                        )))
+                        ->match(
+                            static fn() => null,
+                            static fn() => null,
+                        );
+
+                    return Response::of(
+                        StatusCode::ok,
+                        $request->protocolVersion(),
+                    );
+                },
+            );
     }
 }

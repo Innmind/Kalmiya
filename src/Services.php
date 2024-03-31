@@ -21,6 +21,7 @@ enum Services implements Service
     case backup;
     case backups;
     case config;
+    case templates;
     case ipc;
     case appleMusic;
 
@@ -66,6 +67,17 @@ enum Services implements Service
     {
         /** @var self<Adapter> */
         return self::config;
+    }
+
+    /**
+     * @psalm-pure
+     *
+     * @return self<Adapter>
+     */
+    public static function templates(): self
+    {
+        /** @var self<Adapter> */
+        return self::templates;
     }
 
     /**
