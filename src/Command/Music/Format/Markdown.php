@@ -4,53 +4,53 @@ declare(strict_types = 1);
 namespace Innmind\Kalmiya\Command\Music\Format;
 
 use Innmind\Kalmiya\Command\Music\Format;
-use Innmind\CLI\Environment;
+use Innmind\CLI\Console;
 use MusicCompanion\AppleMusic\SDK\{
     Library,
     Library\Artist,
     Catalog,
 };
 use Innmind\Url\Scheme;
-use Innmind\Immutable\Str;
+use Innmind\Immutable\{
+    Str,
+    Maybe,
+};
 
 final class Markdown implements Format
 {
-    private Environment $env;
     private bool $headerPrinted = false;
 
-    public function __construct(Environment $env)
-    {
-        $this->env = $env;
-    }
-
-    public function __invoke($album, Artist $artist): void
-    {
+    public function __invoke(
+        Console $console,
+        Library\Album|Catalog\Album $album,
+        Artist $artist,
+    ): Console {
         if (!$this->headerPrinted) {
-            $output = $this->env->output();
-            $output->write(Str::of("|Artist|Album|Artwork|\n"));
-            $output->write(Str::of("|---|---|---|\n"));
+            $console = $console
+                ->output(Str::of("|Artist|Album|Artwork|\n"))
+                ->output(Str::of("|---|---|---|\n"));
             $this->headerPrinted = true;
         }
 
-        $artwork = '';
         $albumName = $album->name()->toString();
 
         if ($album instanceof Library\Album) {
-            $widthClass = Library\Album\Artwork\Width::class;
-            $heightClass = Library\Album\Artwork\Height::class;
+            $artwork = $album->artwork()->map(static fn($artwork) => $artwork->ofSize(
+                Library\Album\Artwork\Width::of(200),
+                Library\Album\Artwork\Height::of(200),
+            ));
         } else {
-            $widthClass = Catalog\Artwork\Width::class;
-            $heightClass = Catalog\Artwork\Height::class;
+            $artwork = $album->artwork()->ofSize(
+                Catalog\Artwork\Width::of(200),
+                Catalog\Artwork\Height::of(200),
+            );
+            $artwork = Maybe::just($artwork);
         }
 
-        if ($album->hasArtwork()) {
-            /** @psalm-suppress PossiblyInvalidArgument */
-            $artwork = $album->artwork()->ofSize(
-                new $widthClass(200),
-                new $heightClass(200),
-            )->toString();
-            $artwork = "![]($artwork)";
-        }
+        $artwork = $artwork->match(
+            static fn($url) => "![]({$url->toString()})",
+            static fn() => '',
+        );
 
         if ($album instanceof Catalog\Album) {
             $url = $album
@@ -60,9 +60,8 @@ final class Markdown implements Format
             $albumName = "[$albumName]($url)";
         }
 
-        $this
-            ->env
-            ->output()
-            ->write(Str::of("| {$artist->name()->toString()} | $albumName | $artwork |\n"));
+        return $console->output(
+            Str::of("| {$artist->name()->toString()} | $albumName | $artwork |\n"),
+        );
     }
 }

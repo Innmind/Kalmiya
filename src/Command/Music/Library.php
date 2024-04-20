@@ -9,15 +9,15 @@ use Innmind\Kalmiya\{
 };
 use Innmind\CLI\{
     Command,
-    Command\Arguments,
-    Command\Options,
-    Environment,
+    Console,
 };
 use Innmind\Filesystem\{
     Adapter,
     Name,
     Directory,
+    File,
 };
+use Innmind\Immutable\Predicate\Instance;
 
 final class Library implements Command
 {
@@ -30,42 +30,61 @@ final class Library implements Command
         $this->config = $config;
     }
 
-    public function __invoke(Environment $env, Arguments $arguments, Options $options): void
+    public function __invoke(Console $console): Console
     {
         $sdk = ($this->makeSDK)();
-        /** @var Directory */
-        $config = $this->config->get(new Name('apple-music'));
-        $wishedFormat = $options->contains('format') ? $options->get('format') : 'text';
+        $config = $this
+            ->config
+            ->get(Name::of('apple-music'))
+            ->keep(Instance::of(Directory::class))
+            ->match(
+                static fn($config) => $config,
+                static fn() => throw new AppleMusicNotConfigured,
+            );
+        $wishedFormat = $console
+            ->options()
+            ->maybe('format')
+            ->match(
+                static fn($format) => $format,
+                static fn() => 'text',
+            );
 
-        switch ($wishedFormat) {
-            case 'markdown':
-                $format = new Format\Markdown($env);
-                break;
+        $format = match ($wishedFormat) {
+            'markdown' => new Format\Markdown,
+            default => new Format\Text,
+        };
 
-            default:
-                $format = new Format\Text($env);
-                break;
-        }
+        $library = $config
+            ->get(Name::of('user-token'))
+            ->keep(Instance::of(File::class))
+            ->map(static fn($file) => $file->content()->toString())
+            ->flatMap($sdk->library(...))
+            ->match(
+                static fn($library) => $library,
+                static fn() => throw new AppleMusicNotConfigured,
+            );
 
-        if (!$config->contains(new Name('user-token'))) {
-            throw new AppleMusicNotConfigured;
-        }
-
-        $userToken = $config->get(new Name('user-token'))->content()->toString();
-
-        $library = $sdk->library($userToken);
-        $library
+        return $library
             ->artists()
-            ->foreach(static function($artist) use ($library, $format): void {
-                $library
+            ->reduce(
+                $console,
+                static fn(Console $console, $artist) => $library
                     ->albums($artist->id())
-                    ->foreach(static function($album) use ($format, $artist) {
-                        $format($album, $artist);
-                    });
-            });
+                    ->reduce(
+                        $console,
+                        static fn(Console $console, $album) => $format(
+                            $console,
+                            $album,
+                            $artist,
+                        ),
+                    ),
+            );
     }
 
-    public function toString(): string
+    /**
+     * @psalm-mutation-free
+     */
+    public function usage(): string
     {
         return <<<USAGE
             music:library --format=

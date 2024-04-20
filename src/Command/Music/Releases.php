@@ -3,37 +3,28 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command\Music;
 
-use Innmind\Kalmiya\AppleMusic\SDKFactory;
+use Innmind\Kalmiya\{
+    AppleMusic\SDKFactory,
+    Exception\AppleMusicNotConfigured,
+};
 use Innmind\CLI\{
     Command,
-    Command\Arguments,
-    Command\Options,
-    Environment,
+    Console,
 };
-use MusicCompanion\AppleMusic\SDK\Catalog\{
-    Album,
-    Artwork\Width,
-    Artwork\Height,
-    Artist,
-};
+use MusicCompanion\AppleMusic\SDK\Catalog\Album;
 use Innmind\Filesystem\{
     Adapter,
     Name,
     Directory,
-    File\File,
+    File,
 };
-use Innmind\Stream\Readable\Stream;
 use Innmind\TimeContinuum\{
     Clock,
     Earth\Period\Year,
     Earth\Format\ISO8601,
 };
-use Innmind\HttpTransport\{
-    Transport,
-    Exception\ClientError,
-};
-use Innmind\Immutable\Set;
-use function Innmind\Immutable\first;
+use Innmind\HttpTransport\Transport;
+use Innmind\Immutable\Predicate\Instance;
 
 final class Releases implements Command
 {
@@ -46,7 +37,7 @@ final class Releases implements Command
         SDKFactory $makeSDK,
         Adapter $config,
         Clock $clock,
-        Transport $fulfill
+        Transport $fulfill,
     ) {
         $this->makeSDK = $makeSDK;
         $this->config = $config;
@@ -54,135 +45,159 @@ final class Releases implements Command
         $this->fulfill = $fulfill;
     }
 
-    public function __invoke(Environment $env, Arguments $arguments, Options $options): void
+    public function __invoke(Console $console): Console
     {
         $sdk = ($this->makeSDK)();
-        /** @var Directory */
-        $config = $this->config->get(new Name('apple-music'));
-
-        if (!$config->contains(new Name('releases-check'))) {
-            $lastCheck = $this->clock->now()->goBack(new Year(1));
-        } else {
-            $lastCheck = $this->clock->at(
-                $config->get(new Name('releases-check'))->content()->toString(),
-                new ISO8601,
+        $config = $this
+            ->config
+            ->get(Name::of('apple-music'))
+            ->keep(Instance::of(Directory::class))
+            ->match(
+                static fn($config) => $config,
+                static fn() => throw new AppleMusicNotConfigured,
             );
-        }
 
-        $wishedFormat = $options->contains('format') ? $options->get('format') : 'text';
+        $lastCheck = $config
+            ->get(Name::of('releases-check'))
+            ->keep(Instance::of(File::class))
+            ->map(static fn($file) => $file->content()->toString())
+            ->flatMap(fn($lastCheck) => $this->clock->at($lastCheck, new ISO8601))
+            ->match(
+                static fn($lastCheck) => $lastCheck,
+                fn() => $this->clock->now()->goBack(Year::of(1)),
+            );
 
-        switch ($wishedFormat) {
-            case 'pretty':
-                $format = new Format\Pretty($env, $this->fulfill);
-                break;
+        $wishedFormat = $console
+            ->options()
+            ->maybe('format')
+            ->match(
+                static fn($format) => $format,
+                static fn() => null,
+            );
 
-            case 'markdown':
-                $format = new Format\Markdown($env);
-                break;
-
-            default:
-                $format = new Format\Text($env);
-                break;
-        }
+        $format = match ($wishedFormat) {
+            'pretty' => new Format\Pretty($this->fulfill),
+            'markdown' => new Format\Markdown,
+            default => new Format\Text,
+        };
 
         $now = $this->clock->now();
-        $userToken = $config->get(new Name('user-token'))->content()->toString();
+        $library = $config
+            ->get(Name::of('user-token'))
+            ->keep(Instance::of(File::class))
+            ->map(static fn($file) => $file->content()->toString())
+            ->flatMap($sdk->library(...))
+            ->match(
+                static fn($library) => $library,
+                static fn() => throw new AppleMusicNotConfigured,
+            );
 
-        $library = $sdk->library($userToken);
         $catalog = $sdk->catalog($library->storefront()->id());
-        $library
+        $console = $library
             ->artists()
-            ->foreach(static function($artist) use ($library, $catalog, $lastCheck, $now, $format): void {
-                try {
-                    $album = first($library->albums($artist->id()));
-                } catch (ClientError $e) {
-                    return;
-                }
+            ->reduce(
+                $console,
+                static function(Console $console, $artist) use ($library, $catalog, $lastCheck, $now, $format) {
+                    $album = $library
+                        ->albums($artist->id())
+                        ->first()
+                        ->match(
+                            static fn($album) => $album,
+                            static fn() => null,
+                        );
 
-                $artistName = $artist->name()->toString();
-                $albumName = $album->name()->toString();
-                // add an album name to the search to narrow the list of returned
-                // artists to make sure we get the right one
-                $term = "$artistName $albumName";
+                    if (\is_null($album)) {
+                        return $console;
+                    }
 
-                if (\strtolower($artistName) === \strtolower($albumName)) {
-                    // this case happens for America or HAERTS for example, and
-                    // if the same term is in the research twice it will not find
-                    // the album, and the results will contain WAY too many albums
-                    $term = $artistName;
-                }
+                    $artistName = $artist->name()->toString();
+                    $albumName = $album->name()->toString();
+                    // add an album name to the search to narrow the list of returned
+                    // artists to make sure we get the right one
+                    $term = "$artistName $albumName";
 
-                $search = $catalog->search($term);
+                    if (\strtolower($artistName) === \strtolower($albumName)) {
+                        // this case happens for America or HAERTS for example, and
+                        // if the same term is in the research twice it will not find
+                        // the album, and the results will contain WAY too many albums
+                        $term = $artistName;
+                    }
 
-                /** @var Set<Artist\Id> */
-                $ids = $search
-                    ->albums()
-                    ->take(25)
-                    ->toSequenceOf(
-                        Album::class,
-                        static function(Album\Id $id) use ($catalog): \Generator {
-                            try {
-                                yield $catalog->album($id);
-                            } catch (ClientError $e) {
-                                return;
-                            }
-                        },
-                    )
-                    ->filter(static fn(Album $catalog): bool => $catalog->name()->toString() === $album->name()->toString())
-                    ->reduce(
-                        Set::of(Artist\Id::class),
-                        static fn(Set $ids, Album $album): Set => $ids->merge($album->artists()),
-                    );
-                /** @var Set<Artist> */
-                $artists = $ids->toSetOf(
-                    Artist::class,
-                    static function(Artist\Id $id) use ($catalog): \Generator {
-                        try {
-                            yield $catalog->artist($id);
-                        } catch (ClientError $e) {
-                            // the catalog doesn't seem consistent as ids
-                            // provided by the api end up in 404
-                            return;
-                        }
-                    },
-                );
-                $artists = $artists->filter(
-                    static fn(Artist $catalog): bool => $catalog->name()->toString() === $artist->name()->toString(),
-                );
+                    $search = $catalog->search($term);
 
-                if ($artists->empty()) {
-                    return;
-                }
+                    $ids = $search
+                        ->albums()
+                        ->take(25)
+                        ->flatMap(
+                            static fn($id) => $catalog
+                                ->album($id)
+                                ->toSequence(),
+                        )
+                        ->filter(static fn(Album $catalog): bool => $catalog->name()->toString() === $album->name()->toString())
+                        ->toSet()
+                        ->flatMap(static fn($album) => $album->artists());
+                    $catalogArtist = $ids
+                        ->flatMap(
+                            static fn($id) => $catalog
+                                ->artist($id)
+                                ->toSequence()
+                                ->toSet(),
+                        )
+                        ->filter(
+                            static fn($catalog) => $catalog->name()->toString() === $artist->name()->toString(),
+                        )
+                        ->find(static fn() => true)
+                        ->match(
+                            static fn($artist) => $artist,
+                            static fn() => null,
+                        );
 
-                $catalog
-                    ->artist(first($artists)->id())
-                    ->albums()
-                    ->toSetOf(
-                        Album::class,
-                        static function(Album\Id $id) use ($catalog): \Generator {
-                            try {
-                                yield $catalog->album($id);
-                            } catch (ClientError $e) {
-                                return;
-                            }
-                        },
-                    )
-                    ->filter(static fn(Album $album): bool => $album->release()->aheadOf($lastCheck))
-                    ->filter(static fn(Album $album): bool => $now->aheadOf($album->release())) // do not display future releases
-                    ->foreach(static function(Album $album) use ($artist, $format): void {
-                        $format($album, $artist);
-                    });
-            });
+                    if (\is_null($catalogArtist)) {
+                        return $console;
+                    }
+
+                    $albums = $catalogArtist->albums();
+
+                    return $albums
+                        ->flatMap(
+                            static fn($id) => $catalog
+                                ->album($id)
+                                ->toSequence()
+                                ->toSet(),
+                        )
+                        ->filter(static fn($album) => $album->release()->match(
+                            static fn($release) => $release->aheadOf($lastCheck),
+                            static fn() => false,
+                        ))
+                        ->filter(static fn($album) => $album->release()->match(
+                            $now->aheadOf(...), // do not display future releases
+                            static fn() => false,
+                        ))
+                        ->reduce(
+                            $console,
+                            static fn(Console $console, $album) => $format(
+                                $console,
+                                $album,
+                                $artist,
+                            ),
+                        );
+                },
+            );
 
         $this->config->add(
             $config->add(File::named(
                 'releases-check',
-                Stream::ofContent($now->format(new ISO8601)),
+                File\Content::ofString($now->format(new ISO8601)),
             )),
         );
+
+        return $console;
     }
 
-    public function toString(): string
+    /**
+     * @psalm-mutation-free
+     */
+    public function usage(): string
     {
         return <<<USAGE
             music:releases --format=

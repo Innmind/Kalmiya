@@ -3,16 +3,18 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya\Command\Music;
 
+use Innmind\CLI\Console;
 use MusicCompanion\AppleMusic\SDK\{
-    Library\Album as LibraryAlbum,
+    Library,
     Library\Artist,
-    Catalog\Album as CatalogAlbum,
+    Catalog,
 };
 
 interface Format
 {
-    /**
-     * @param LibraryAlbum|CatalogAlbum $album
-     */
-    public function __invoke($album, Artist $artist): void;
+    public function __invoke(
+        Console $console,
+        Library\Album|Catalog\Album $album,
+        Artist $artist,
+    ): Console;
 }
