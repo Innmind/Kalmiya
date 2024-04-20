@@ -1,29 +1,27 @@
 <?php
 declare(strict_types = 1);
 
-require __DIR__.'/../vendor/autoload.php';
+$paths = [
+    __DIR__.'/../vendor/autoload.php',
+    __DIR__ . '/../../../../vendor/autoload.php',
+];
 
-use function Innmind\Kalmiya\http;
-use Innmind\HttpFramework\{
-    Main,
+foreach ($paths as $file) {
+    if (\file_exists($file)) {
+        require $file;
+        break;
+    }
+}
+
+use Innmind\Framework\{
+    Main\Http,
     Application,
 };
-use Innmind\Url\Path;
-use function Innmind\IPC\bootstrap as ipc;
+use Innmind\Kalmiya\Kernel;
 
-new class extends Main {
+new class extends Http {
     protected function configure(Application $app): Application
     {
-        return $app
-            ->configAt(Path::of(__DIR__.'/../config/'))
-            ->handler(static fn($os, $env) => http(
-                $os->filesystem()->mount(Path::of(
-                    $env->get('HOME').'/.kalmiya/',
-                )),
-                $os->remote()->http(),
-                $os->clock(),
-                Path::of(__DIR__.'/../templates/'),
-                ipc($os),
-            ));
+        return $app->map(new Kernel);
     }
 };
