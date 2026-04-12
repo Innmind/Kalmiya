@@ -125,6 +125,8 @@ final class NewProject implements Command
         string $package,
         Path $projectPath,
     ): Attempt {
+        $year = (string) $this->os->clock()->now()->year()->toInt();
+
         return $this
             ->os
             ->filesystem()
@@ -139,7 +141,12 @@ final class NewProject implements Command
                             ->root()
                             ->all()
                             ->map(static fn($file) => match (true) {
-                                $file instanceof File => self::update($file, $vendor, $package),
+                                $file instanceof File => self::update(
+                                    $file,
+                                    $vendor,
+                                    $package,
+                                    $year,
+                                ),
                                 default => $file,
                             })
                             ->sink(SideEffect::identity)
@@ -186,6 +193,7 @@ final class NewProject implements Command
         File $file,
         string $vendor,
         string $package,
+        string $year,
     ): File {
         if ($file->name()->str()->startsWith('dot-')) {
             /** @psalm-suppress ArgumentTypeCoercion */
@@ -206,6 +214,16 @@ final class NewProject implements Command
                         static fn($str) => $str
                             ->replace('{vendor}', $vendor)
                             ->replace('{package}', $package),
+                    ),
+                ),
+            );
+        }
+
+        if ($file->name()->toString() === 'LICENSE') {
+            return $file->withContent(
+                $file->content()->map(
+                    static fn($line) => $line->map(
+                        static fn($str) => $str->replace('{year}', $year),
                     ),
                 ),
             );
