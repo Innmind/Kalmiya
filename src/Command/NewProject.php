@@ -5,6 +5,7 @@ namespace Innmind\Kalmiya\Command;
 
 use Innmind\CLI\{
     Command,
+    Command\Usage,
     Console,
 };
 use Innmind\OperatingSystem\OperatingSystem;
@@ -14,6 +15,10 @@ use Innmind\Filesystem\{
     Name,
 };
 use Innmind\Url\Path;
+use Innmind\Immutable\{
+    Attempt,
+    SideEffect,
+};
 
 final class NewProject implements Command
 {
@@ -31,12 +36,48 @@ final class NewProject implements Command
         $this->backup = $backup;
     }
 
-    public function __invoke(Console $console): Console
+    #[\Override]
+    public function __invoke(Console $console): Attempt
     {
         $vendor = $console->arguments()->get('vendor');
         $package = $console->arguments()->get('package');
         $projectPath = $this->projects->resolve(Path::of("$vendor/$package/"));
         $backupPath = $this->backup->resolve(Path::of("$vendor/$package/"));
+
+        return $this
+            ->git(
+                $vendor,
+                $package,
+                $projectPath,
+                $backupPath,
+            )
+            ->flatMap(fn() => $this->copy($vendor, $package, $projectPath))
+            ->flatMap(fn() => $this->finish($vendor, $projectPath))
+            ->map(static fn() => $console);
+    }
+
+    /**
+     * @psalm-mutation-free
+     */
+    #[\Override]
+    public function usage(): Usage
+    {
+        return Usage::parse(<<<USAGE
+        new vendor package
+
+        Will create a new composer project in your Sites folder
+        USAGE);
+    }
+
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function git(
+        string $vendor,
+        string $package,
+        Path $projectPath,
+        Path $backupPath,
+    ): Attempt {
         $commands = [
             Server\Command::foreground('mkdir')
                 ->withShortOption('p')
@@ -71,21 +112,48 @@ final class NewProject implements Command
                 ->withWorkingDirectory($projectPath);
         }
 
-        $init = new Server\Script(...$commands);
-        $init($this->os->control());
+        $init = Server\Script::of(...$commands);
 
-        $repository = $this->os->filesystem()->mount($projectPath);
-        $template = $this->os->filesystem()->mount(Path::of(__DIR__.'/../../project-template/'));
-        $_ = $template
-            ->root()
-            ->all()
-            ->map(static fn($file) => match (true) {
-                $file instanceof File => self::update($file, $vendor, $package),
-                default => $file,
-            })
-            ->foreach($repository->add(...));
+        return $init($this->os->control());
+    }
 
-        $finish = new Server\Script(
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function copy(
+        string $vendor,
+        string $package,
+        Path $projectPath,
+    ): Attempt {
+        return $this
+            ->os
+            ->filesystem()
+            ->mount($projectPath)
+            ->flatMap(
+                fn($repository) => $this
+                    ->os
+                    ->filesystem()
+                    ->mount(Path::of(__DIR__.'/../../project-template/'))
+                    ->flatMap(
+                        static fn($template) => $template
+                            ->root()
+                            ->all()
+                            ->map(static fn($file) => match (true) {
+                                $file instanceof File => self::update($file, $vendor, $package),
+                                default => $file,
+                            })
+                            ->sink(SideEffect::identity)
+                            ->attempt(static fn($_, $file) => $repository->add($file)),
+                    ),
+            );
+    }
+
+    /**
+     * @return Attempt<SideEffect>
+     */
+    private function finish(string $vendor, Path $projectPath): Attempt
+    {
+        $finish = Server\Script::of(
             Server\Command::foreground('git')
                 ->withArgument('add')
                 ->withArgument('.')
@@ -94,7 +162,7 @@ final class NewProject implements Command
                 ->withArgument('commit')
                 ->withShortOption('m', 'initial commit')
                 ->withWorkingDirectory($projectPath),
-            Server\Command::foreground('git')
+            Server\Command::foreground('git') // todo remove
                 ->withArgument('checkout')
                 ->withShortOption('b', 'develop')
                 ->withWorkingDirectory($projectPath),
@@ -110,24 +178,11 @@ final class NewProject implements Command
                 ->withShortOption('a', 'iTerm')
                 ->withArgument($projectPath->toString()),
         );
-        $finish($this->os->control());
 
-        return $console;
+        return $finish($this->os->control());
     }
 
-    /**
-     * @psalm-mutation-free
-     */
-    public function usage(): string
-    {
-        return <<<USAGE
-        new vendor package
-
-        Will create a new composer project in your Sites folder
-        USAGE;
-    }
-
-    public static function update(
+    private static function update(
         File $file,
         string $vendor,
         string $package,

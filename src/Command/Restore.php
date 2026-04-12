@@ -5,6 +5,7 @@ namespace Innmind\Kalmiya\Command;
 
 use Innmind\CLI\{
     Command,
+    Command\Usage,
     Console,
 };
 use Innmind\OperatingSystem\Filesystem;
@@ -12,6 +13,7 @@ use Innmind\Url\Path;
 use Innmind\Immutable\{
     Map,
     Str,
+    Attempt,
 };
 
 final class Restore implements Command
@@ -29,11 +31,14 @@ final class Restore implements Command
         $this->backups = $backups;
     }
 
-    public function __invoke(Console $console): Console
+    #[\Override]
+    public function __invoke(Console $console): Attempt
     {
-        return $this->backups->reduce(
-            $console,
-            function(Console $console, Path $target, Path $source) {
+        return $this->backups->toSequence()->sink($console)->attempt(
+            function(Console $console, $pair) {
+                $target = $pair->key();
+                $source = $pair->value();
+
                 if (!$this->filesystem->contains($source)) {
                     return $console->output(Str::of("Restore source {$source->toString()} not accessible\n"));
                 }
@@ -42,22 +47,33 @@ final class Restore implements Command
                     return $console->output(Str::of("Restore target {$target->toString()} not accessible\n"));
                 }
 
-                $console = $console->output(Str::of("Restoring {$source->toString()} to {$target->toString()}:\n"));
-                $target = $this->filesystem->mount($target);
-
-                return $this
-                    ->filesystem
-                    ->mount($source)
-                    ->root()
-                    ->all()
-                    ->reduce(
-                        $console,
-                        static function(Console $console, $file) use ($target) {
-                            $console = $console->output(Str::of("{$file->name()->toString()}..."));
-                            $target->add($file);
-
-                            return $console->output(Str::of(" OK\n"));
-                        },
+                return $console
+                    ->output(Str::of("Restoring {$source->toString()} to {$target->toString()}:\n"))
+                    ->flatMap(
+                        fn($console) => $this
+                            ->filesystem
+                            ->mount($target)
+                            ->flatMap(
+                                fn($target) => $this
+                                    ->filesystem
+                                    ->mount($source)
+                                    ->flatMap(
+                                        static fn($source) => $source
+                                            ->root()
+                                            ->all()
+                                            ->sink($console)
+                                            ->attempt(
+                                                static fn($console, $file) => $console
+                                                    ->output(Str::of("{$file->name()->toString()}..."))
+                                                    ->flatMap(
+                                                        static fn($console) => $target
+                                                            ->add($file)
+                                                            ->map(static fn() => $console),
+                                                    )
+                                                    ->flatMap(static fn($console) => $console->output(Str::of(" OK\n"))),
+                                            ),
+                                    ),
+                            ),
                     );
             },
         );
@@ -66,8 +82,9 @@ final class Restore implements Command
     /**
      * @psalm-mutation-free
      */
-    public function usage(): string
+    #[\Override]
+    public function usage(): Usage
     {
-        return 'restore';
+        return Usage::of('restore');
     }
 }
