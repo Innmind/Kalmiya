@@ -3,9 +3,8 @@ declare(strict_types = 1);
 
 namespace Innmind\Kalmiya;
 
-use Innmind\Kalmiya\AppleMusic\SDKFactory;
+use Innmind\OperatingSystem\OperatingSystem;
 use Innmind\DI\Service;
-use Innmind\IPC\IPC;
 use Innmind\Filesystem\Adapter;
 use Innmind\Url\Path;
 use Innmind\Immutable\Map;
@@ -20,10 +19,8 @@ enum Services implements Service
     case home;
     case backup;
     case backups;
-    case config;
     case templates;
-    case ipc;
-    case appleMusic;
+    case os;
 
     /**
      * @psalm-pure
@@ -63,17 +60,6 @@ enum Services implements Service
      *
      * @return self<Adapter>
      */
-    public static function config(): self
-    {
-        /** @var self<Adapter> */
-        return self::config;
-    }
-
-    /**
-     * @psalm-pure
-     *
-     * @return self<Adapter>
-     */
     public static function templates(): self
     {
         /** @var self<Adapter> */
@@ -81,24 +67,14 @@ enum Services implements Service
     }
 
     /**
+     * @internal
      * @psalm-pure
      *
-     * @return self<IPC>
+     * @return self<OperatingSystem>
      */
-    public static function ipc(): self
+    public static function os(): self
     {
-        /** @var self<IPC> */
-        return self::ipc;
-    }
-
-    /**
-     * @psalm-pure
-     *
-     * @return self<SDKFactory>
-     */
-    public static function appleMusic(): self
-    {
-        /** @var self<SDKFactory> */
-        return self::appleMusic;
+        /** @var self<OperatingSystem> */
+        return self::os;
     }
 }

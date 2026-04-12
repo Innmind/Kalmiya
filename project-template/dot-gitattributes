@@ -1,2 +1,6 @@
 /.github export-ignore
 /proofs export-ignore
+/blackbox.php export-ignore
+/codecov.yml export-ignore
+/.php-cs-fixer.dist.php export-ignore
+/psalm.xml export-ignore

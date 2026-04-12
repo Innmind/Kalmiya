@@ -10,9 +10,8 @@ use Innmind\BlackBox\{
 };
 
 Application::new($argv)
-    ->when(
-        \get_env('ENABLE_COVERAGE') !== false,
-        static fn(Application $app) => $app 
+    ->map(static fn($app) => match (\getenv('BLACKBOX_ENV')) {
+        'coverage' => $app
             ->scenariiPerProof(1)
             ->codeCoverage(
                 CodeCoverage::of(
@@ -22,6 +21,7 @@ Application::new($argv)
                     ->dumpTo('coverage.clover')
                     ->enableWhen(true),
             ),
-    )
+        default => $app,
+    })
     ->tryToProve(Load::everythingIn(__DIR__.'/proofs/'))
     ->exit();
