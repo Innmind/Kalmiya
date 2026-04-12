@@ -5,6 +5,7 @@ namespace Innmind\Kalmiya\Command;
 
 use Innmind\CLI\{
     Command,
+    Command\Usage,
     Console,
 };
 use Innmind\OperatingSystem\Filesystem;
@@ -14,6 +15,8 @@ use Innmind\Immutable\{
     Map,
     Set,
     Str,
+    Attempt,
+    SideEffect,
 };
 
 final class Backup implements Command
@@ -41,11 +44,14 @@ final class Backup implements Command
         $this->foldersToOpen = $foldersToOpen;
     }
 
-    public function __invoke(Console $console): Console
+    #[\Override]
+    public function __invoke(Console $console): Attempt
     {
-        $console = $this->backups->reduce(
-            $console,
-            function(Console $console, Path $source, Path $target) {
+        $console = $this->backups->toSequence()->sink($console)->attempt(
+            function(Console $console, $pair) {
+                $source = $pair->key();
+                $target = $pair->value();
+
                 if (!$this->filesystem->contains($source)) {
                     return $console->output(Str::of("Backup source {$source->toString()} not accessible\n"));
                 }
@@ -54,43 +60,66 @@ final class Backup implements Command
                     return $console->output(Str::of("Backup target {$target->toString()} not accessible\n"));
                 }
 
-                $console = $console->output(Str::of("Backuping {$source->toString()} to {$target->toString()}:\n"));
-                $target = $this->filesystem->mount($target);
-
-                return $this
-                    ->filesystem
-                    ->mount($source)
-                    ->root()
-                    ->all()
-                    ->reduce(
-                        $console,
-                        static function(Console $console, $file) use ($target) {
-                            $console = $console->output(Str::of("{$file->name()->toString()}..."));
-                            $target->add($file);
-
-                            return $console->output(Str::of(" OK\n"));
-                        },
+                return $console
+                    ->output(Str::of("Backuping {$source->toString()} to {$target->toString()}:\n"))
+                    ->flatMap(
+                        fn($console) => $this
+                            ->filesystem
+                            ->mount($target)
+                            ->flatMap(
+                                fn($target) => $this
+                                    ->filesystem
+                                    ->mount($source)
+                                    ->flatMap(
+                                        static fn($source) => $source
+                                            ->root()
+                                            ->all()
+                                            ->sink($console)
+                                            ->attempt(
+                                                static fn($console, $file) => $console
+                                                    ->output(Str::of("{$file->name()->toString()}..."))
+                                                    ->flatMap(
+                                                        static fn($console) => $target
+                                                            ->add($file)
+                                                            ->map(static fn() => $console),
+                                                    )
+                                                    ->flatMap(static fn($console) => $console->output(Str::of(" OK\n"))),
+                                            ),
+                                    ),
+                            ),
                     );
             },
         );
-        $this->foldersToOpen->foreach(function(Path $folder): void {
-            $this
-                ->processes
-                ->execute(
-                    Server\Command::foreground('open')
-                        ->withArgument($folder->toString()),
-                )
-                ->wait();
-        });
 
-        return $console;
+        return $console->flatMap(
+            fn($console) => $this
+                ->foldersToOpen
+                ->unsorted()
+                ->sink(SideEffect::identity)
+                ->attempt(
+                    fn($_, $folder) => $this
+                        ->processes
+                        ->execute(
+                            Server\Command::foreground('open')
+                                ->withArgument($folder->toString()),
+                        )
+                        ->flatMap(
+                            static fn($process) => $process
+                                ->wait()
+                                ->map(SideEffect::identity(...))
+                                ->attempt(static fn() => new \RuntimeException),
+                        ),
+                )
+                ->map(static fn() => $console),
+        );
     }
 
     /**
      * @psalm-mutation-free
      */
-    public function usage(): string
+    #[\Override]
+    public function usage(): Usage
     {
-        return 'backup';
+        return Usage::of('backup');
     }
 }
